@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
-import { upload } from "@vercel/blob/client";
 import {
   BsUpload,
   BsCheckCircleFill,
@@ -103,33 +102,6 @@ export default function InfluencerApplyForm({
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [useBlobStorage, setUseBlobStorage] = useState<boolean>(false);
-
-  useEffect(() => {
-    // When running locally on localhost or 127.0.0.1, always use direct local upload
-    // to eliminate cross-origin (CORS) issues and endless vercel.com upload retries
-    if (typeof window !== "undefined") {
-      const hostname = window.location.hostname;
-      if (
-        hostname === "localhost" ||
-        hostname === "127.0.0.1" ||
-        hostname.endsWith(".local")
-      ) {
-        setUseBlobStorage(false);
-        return;
-      }
-    }
-
-    // On remote/production domains, check whether real Blob token is configured
-    fetch("/api/upload/token")
-      .then((res) => res.json())
-      .then((data) => {
-        setUseBlobStorage(Boolean(data?.configured));
-      })
-      .catch(() => {
-        setUseBlobStorage(false);
-      });
-  }, []);
 
   if (!isOpen) return null;
 
@@ -259,7 +231,7 @@ export default function InfluencerApplyForm({
       ];
       const uploadedVideoUrls: (string | null)[] = [null, null, null];
 
-      // Helper to upload media file with automatic local fallback
+      // Helper to upload media file directly to storage (Supabase public storage with fallback)
       const uploadMediaWithFallback = async (
         file: File,
         prefix: "photos" | "videos",
@@ -269,27 +241,65 @@ export default function InfluencerApplyForm({
         const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const targetPath = `influencers/${prefix}/${Date.now()}_${prefix[0]}${idx + 1}_${sanitizedFileName}`;
 
-        // ONLY attempt Vercel Blob if explicitly verified and configured
-        if (useBlobStorage === true) {
+        // 1. Direct upload to Supabase Storage bucket (partner-uploads)
+        // This completely bypasses Vercel 4.5MB serverless limits and works consistently on live & local
+        const supabaseUrl =
+          (process.env.NEXT_PUBLIC_SUPABASE_URL ||
+            "https://degpqeykfphdclzxgqkd.supabase.co").replace(/\/$/, "");
+        const supabaseAnonKey =
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlZ3BxZXlrZnBoZGNsenhncWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NDMyMDcsImV4cCI6MjEwNTExOTIwN30.uOMjxRXRwvpGqG84O38nLzGL3yAS3sWAwHWxc1J4g-U";
+
+        if (supabaseUrl && supabaseAnonKey) {
           try {
-            const blob = await upload(targetPath, file, {
-              access: "public",
-              handleUploadUrl: "/api/upload/token",
-              onUploadProgress: (progressEvent) => {
-                const pct = Math.min(100, Math.round(progressEvent.percentage));
-                onProgress(pct);
-              },
+            const url = await new Promise<string>((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              const uploadEndpoint = `${supabaseUrl}/storage/v1/object/partner-uploads/${targetPath}`;
+              xhr.open("POST", uploadEndpoint);
+              xhr.setRequestHeader("apikey", supabaseAnonKey);
+              xhr.setRequestHeader("Authorization", `Bearer ${supabaseAnonKey}`);
+              xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+              xhr.setRequestHeader("x-upsert", "true");
+              xhr.timeout = 10 * 60 * 1000; // 10 minutes for large videos
+
+              xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                  const pct = Math.min(99, Math.round((event.loaded / event.total) * 100));
+                  onProgress(pct);
+                }
+              };
+
+              xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                  onProgress(100);
+                  resolve(`${supabaseUrl}/storage/v1/object/public/partner-uploads/${targetPath}`);
+                } else {
+                  try {
+                    const res = JSON.parse(xhr.responseText);
+                    reject(new Error(res.message || res.error || `Upload failed with status ${xhr.status}`));
+                  } catch {
+                    reject(new Error(`Upload failed with status ${xhr.status}`));
+                  }
+                }
+              };
+
+              xhr.onerror = () =>
+                reject(new Error("Network connection error during file upload."));
+              xhr.ontimeout = () =>
+                reject(new Error("Upload timed out. Please check your internet connection."));
+
+              xhr.send(file);
             });
-            return blob.url;
-          } catch (err: any) {
+
+            return url;
+          } catch (supaErr: any) {
             console.warn(
-              `Vercel Blob upload failed (${err?.message || "Storage error"}), falling back to local storage.`
+              `Supabase direct storage upload failed (${supaErr?.message || "Storage error"}), trying local fallback.`
             );
-            setUseBlobStorage(false);
           }
         }
 
-        // Direct local storage upload
+        // 2. Fallback to /api/upload/local (for offline development)
         try {
           const formData = new FormData();
           formData.append("file", file);
@@ -298,7 +308,7 @@ export default function InfluencerApplyForm({
           const url = await new Promise<string>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open("POST", "/api/upload/local");
-            xhr.timeout = 5 * 60 * 1000; // 5 minutes timeout for large files
+            xhr.timeout = 5 * 60 * 1000;
 
             xhr.upload.onprogress = (event) => {
               if (event.lengthComputable) {

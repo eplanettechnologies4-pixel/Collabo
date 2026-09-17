@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { getSupabaseAdmin } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,37 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     // Sanitize prefix to avoid path traversal
     const safePrefix = prefix.replace(/[^a-zA-Z0-9_-]/g, "");
+    const rawName = file.name || "media-file";
+    const sanitizedFileName = rawName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const uniqueFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${sanitizedFileName}`;
+
+    // 1. First priority: Supabase Storage bucket (partner-uploads)
+    const supabase = getSupabaseAdmin();
+    if (supabase) {
+      try {
+        const storagePath = `influencers/${safePrefix}/${uniqueFileName}`;
+        const { error: supaError } = await supabase.storage
+          .from("partner-uploads")
+          .upload(storagePath, buffer, {
+            contentType: file.type || "application/octet-stream",
+            upsert: true,
+          });
+
+        if (!supaError) {
+          const { data: publicUrlData } = supabase.storage
+            .from("partner-uploads")
+            .getPublicUrl(storagePath);
+          return NextResponse.json({
+            success: true,
+            url: publicUrlData.publicUrl,
+          });
+        }
+      } catch (e) {
+        console.warn("Server Supabase upload fallback error:", e);
+      }
+    }
+
+    // 2. Local disk storage (works on localhost)
     const uploadDir = path.join(
       process.cwd(),
       "public",
@@ -34,12 +66,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
 
     await mkdir(uploadDir, { recursive: true });
-
-    const rawName = file.name || "media-file";
-    const sanitizedFileName = rawName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const uniqueFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}_${sanitizedFileName}`;
     const filePath = path.join(uploadDir, uniqueFileName);
-
     await writeFile(filePath, buffer);
 
     const publicUrl = `/uploads/influencers/${safePrefix}/${uniqueFileName}`;
