@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 // In-memory fallback store for local dev when Supabase environment variables are missing
 let memoryInfluencers: Array<{
@@ -293,6 +294,9 @@ export async function POST(request: Request) {
             user: process.env.GMAIL_USER,
             pass: process.env.GMAIL_APP_PASSWORD,
           },
+          connectionTimeout: 4000,
+          greetingTimeout: 4000,
+          socketTimeout: 5000,
         });
 
         const destinationEmail =
@@ -314,7 +318,7 @@ export async function POST(request: Request) {
           )
           .join("");
 
-        await transporter.sendMail({
+        const emailPromise = transporter.sendMail({
           from: `"Influencer Applications" <${process.env.GMAIL_USER}>`,
           to: destinationEmail,
           replyTo: email,
@@ -339,8 +343,14 @@ export async function POST(request: Request) {
             <ul>${uploadedVideosHtml || "None"}</ul>
           `,
         });
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Email sending timed out")), 4000)
+        );
+
+        await Promise.race([emailPromise, timeoutPromise]);
       } catch (mailErr) {
-        console.error("Nodemailer error:", mailErr);
+        console.error("Nodemailer error (non-fatal):", mailErr);
       }
     }
 

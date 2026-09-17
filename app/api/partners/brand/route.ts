@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { getSupabaseAdmin } from "@/lib/supabase";
 
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 // In-memory fallback array for local dev if Supabase is not yet populated in .env
 let memoryBrands: Array<{
@@ -136,6 +137,9 @@ export async function POST(request: Request) {
             user: process.env.GMAIL_USER,
             pass: process.env.GMAIL_APP_PASSWORD,
           },
+          connectionTimeout: 4000,
+          greetingTimeout: 4000,
+          socketTimeout: 5000,
         });
 
         const destinationEmail = process.env.SUBMISSIONS_EMAIL || "collabopakistan@gmail.com";
@@ -150,7 +154,7 @@ export async function POST(request: Request) {
           });
         }
 
-        await transporter.sendMail({
+        const emailPromise = transporter.sendMail({
           from: `"Brand Partner Applications" <${process.env.GMAIL_USER}>`,
           to: destinationEmail,
           replyTo: email,
@@ -168,8 +172,14 @@ export async function POST(request: Request) {
           `,
           attachments,
         });
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Email sending timed out")), 4000)
+        );
+
+        await Promise.race([emailPromise, timeoutPromise]);
       } catch (mailErr) {
-        console.error("Nodemailer error:", mailErr);
+        console.error("Nodemailer error (non-fatal):", mailErr);
       }
     }
 
