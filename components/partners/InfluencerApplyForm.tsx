@@ -9,6 +9,11 @@ import {
   BsPlus,
   BsFilm,
   BsImage,
+  BsCamera,
+  BsPersonCircle,
+  BsCheck,
+  BsRulers,
+  BsStar,
 } from "react-icons/bs";
 
 interface InfluencerApplyFormProps {
@@ -21,10 +26,24 @@ interface FormState {
   fullName: string;
   gender: string;
   city: string;
+  country: string;
   phone: string;
   email: string;
+  age: string;
   height: string;
+  weight: string;
+  chestBust: string;
+  waist: string;
+  hips: string;
+  shoeSize: string;
+  hairColor: string;
+  eyeColor: string;
   skinTone: string;
+  languages: string;
+  skills: string;
+  previousCampaigns: string;
+  availability: string;
+  startingRate: string;
   instagramHandle: string;
   followersCount: string;
   tiktokYoutube: string;
@@ -33,6 +52,7 @@ interface FormState {
 
 interface FormErrors {
   fullName?: string;
+  profilePhoto?: string;
   gender?: string;
   city?: string;
   phone?: string;
@@ -45,6 +65,19 @@ interface FormErrors {
   video1?: string;
 }
 
+const AVAILABLE_CATEGORIES = [
+  "Fashion",
+  "Commercial",
+  "Runway",
+  "Editorial",
+  "Fitness",
+  "Glamour",
+  "UGC Creator",
+  "Bridal",
+  "Acting",
+  "Parts Model",
+];
+
 export default function InfluencerApplyForm({
   isOpen,
   onClose,
@@ -54,15 +87,40 @@ export default function InfluencerApplyForm({
     fullName: "",
     gender: "",
     city: "",
+    country: "Pakistan",
     phone: "",
     email: "",
+    age: "",
     height: "",
+    weight: "",
+    chestBust: "",
+    waist: "",
+    hips: "",
+    shoeSize: "",
+    hairColor: "",
+    eyeColor: "",
     skinTone: "",
+    languages: "",
+    skills: "",
+    previousCampaigns: "",
+    availability: "Available for Projects",
+    startingRate: "",
     instagramHandle: "",
     followersCount: "",
     tiktokYoutube: "",
     experience: "",
   });
+
+  // Dedicated Model Profile Photo / Headshot
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState<string | null>(null);
+  const [profilePhotoProgress, setProfilePhotoProgress] = useState<number>(0);
+
+  // Selected Modeling Categories
+  const [modelingCategories, setModelingCategories] = useState<string[]>([
+    "Fashion",
+    "Commercial",
+  ]);
 
   // Brands worked with tags
   const [brandTagInput, setBrandTagInput] = useState("");
@@ -106,10 +164,19 @@ export default function InfluencerApplyForm({
 
   if (!isOpen) return null;
 
+  const toggleCategory = (cat: string) => {
+    if (submitting) return;
+    setModelingCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
+
   const validateField = (name: string, value: any): string => {
     switch (name) {
       case "fullName":
         return !value || !value.trim() ? "Full name is required." : "";
+      case "profilePhoto":
+        return !value ? "Model profile headshot is required." : "";
       case "gender":
         return !value ? "Gender selection is required." : "";
       case "city":
@@ -122,7 +189,7 @@ export default function InfluencerApplyForm({
           return "Invalid email address.";
         return "";
       case "height":
-        return !value || !value.trim() ? 'Height is required (e.g. 5\'7").' : "";
+        return !value || !value.trim() ? 'Height is required (e.g. 5\'7" or 170cm).' : "";
       case "skinTone":
         return !value ? "Skin tone selection is required." : "";
       case "instagramHandle":
@@ -130,9 +197,9 @@ export default function InfluencerApplyForm({
       case "followersCount":
         return !value || !value.trim() ? "Followers count is required." : "";
       case "photo1":
-        return !value ? "First photo (Photo 1) is required." : "";
+        return !value ? "First portfolio photo (Photo 1) is required." : "";
       case "video1":
-        return !value ? "First video (Video 1) is required." : "";
+        return !value ? "First video / reel (Video 1) is required." : "";
       default:
         return "";
     }
@@ -146,6 +213,21 @@ export default function InfluencerApplyForm({
 
     const err = validateField(name, value);
     setErrors((prev) => ({ ...prev, [name]: err }));
+  };
+
+  // Profile photo handler
+  const handleProfilePhotoChange = (file: File | null) => {
+    if (file && file.size > 20 * 1024 * 1024) {
+      alert(`The selected profile photo "${file.name}" exceeds the 20MB limit. Please choose a smaller image.`);
+      return;
+    }
+    setProfilePhoto(file);
+    if (file) {
+      setProfilePhotoPreview(URL.createObjectURL(file));
+      setErrors((prev) => ({ ...prev, profilePhoto: "" }));
+    } else {
+      setProfilePhotoPreview(null);
+    }
   };
 
   // Add brand tag
@@ -207,6 +289,7 @@ export default function InfluencerApplyForm({
 
     const newErrors: FormErrors = {
       fullName: validateField("fullName", form.fullName),
+      profilePhoto: validateField("profilePhoto", profilePhoto || photos[0]),
       gender: validateField("gender", form.gender),
       city: validateField("city", form.city),
       phone: validateField("phone", form.phone),
@@ -225,11 +308,13 @@ export default function InfluencerApplyForm({
     if (hasError) return;
 
     setSubmitting(true);
-    setUploadStatus("Uploading portfolio media to storage...");
+    setUploadStatus("Uploading media to storage...");
+    setProfilePhotoProgress(0);
     setPhotoProgress([0, 0, 0, 0, 0, 0]);
     setVideoProgress([0, 0, 0]);
 
     try {
+      let uploadedProfilePhotoUrl = "";
       const uploadedPhotoUrls: (string | null)[] = [
         null,
         null,
@@ -243,7 +328,7 @@ export default function InfluencerApplyForm({
       // Helper to upload media file directly to storage (Supabase public storage with fallback)
       const uploadMediaWithFallback = async (
         file: File,
-        prefix: "photos" | "videos",
+        prefix: "photos" | "videos" | "profiles",
         idx: number,
         onProgress: (pct: number) => void
       ): Promise<string> => {
@@ -415,13 +500,25 @@ export default function InfluencerApplyForm({
         }
 
         throw new Error(
-          `Failed to upload ${prefix === "photos" ? "Photo" : "Video"} ${idx + 1} (${file.name}): ${
+          `Failed to upload ${prefix === "photos" ? "Photo" : prefix === "profiles" ? "Profile Photo" : "Video"} ${idx + 1} (${file.name}): ${
             lastError?.message || "Storage upload failed. Please check network connection."
           }`
         );
       };
 
-      // 1. Upload photos in parallel
+      // 1. Upload Model Profile Headshot if selected
+      if (profilePhoto) {
+        setUploadStatus("Uploading model profile photo...");
+        uploadedProfilePhotoUrl = await uploadMediaWithFallback(
+          profilePhoto,
+          "profiles",
+          0,
+          (pct) => setProfilePhotoProgress(pct)
+        );
+      }
+
+      // 2. Upload photos in parallel
+      setUploadStatus("Uploading portfolio photos...");
       const photoUploadTasks = photos.map(async (file, idx) => {
         if (!file) return;
         const url = await uploadMediaWithFallback(file, "photos", idx, (pct) => {
@@ -436,7 +533,8 @@ export default function InfluencerApplyForm({
 
       await Promise.all(photoUploadTasks);
 
-      // 2. Upload videos sequentially to maintain dedicated connection bandwidth
+      // 3. Upload videos sequentially to maintain dedicated connection bandwidth
+      setUploadStatus("Uploading portfolio videos...");
       for (let idx = 0; idx < videos.length; idx++) {
         const file = videos[idx];
         if (!file) continue;
@@ -466,10 +564,26 @@ export default function InfluencerApplyForm({
             fullName: form.fullName,
             gender: form.gender,
             city: form.city,
+            country: form.country,
             phone: form.phone,
             email: form.email,
+            age: form.age,
             height: form.height,
+            weight: form.weight,
+            chestBust: form.chestBust,
+            waist: form.waist,
+            hips: form.hips,
+            shoeSize: form.shoeSize,
+            hairColor: form.hairColor,
+            eyeColor: form.eyeColor,
             skinTone: form.skinTone,
+            languages: form.languages,
+            modelingCategories,
+            skills: form.skills,
+            previousCampaigns: form.previousCampaigns,
+            availability: form.availability,
+            startingRate: form.startingRate,
+            profilePictureUrl: uploadedProfilePhotoUrl || uploadedPhotoUrls[0] || "",
             instagramHandle: form.instagramHandle,
             followersCount: form.followersCount,
             tiktokYoutube: form.tiktokYoutube,
@@ -513,9 +627,55 @@ export default function InfluencerApplyForm({
       try {
         const supabase = getSupabaseClient();
         if (supabase) {
-          const { data: insertedInf, error: dbErr } = await supabase
+          const payload = {
+            full_name: form.fullName,
+            gender: form.gender,
+            city: form.city,
+            country: form.country || "Pakistan",
+            phone: form.phone,
+            email: form.email,
+            age: form.age || null,
+            height: form.height,
+            weight: form.weight || null,
+            chest_bust: form.chestBust || null,
+            waist: form.waist || null,
+            hips: form.hips || null,
+            shoe_size: form.shoeSize || null,
+            hair_color: form.hairColor || null,
+            eye_color: form.eyeColor || null,
+            skin_tone: form.skinTone,
+            languages: form.languages || null,
+            modeling_categories: modelingCategories.length > 0 ? modelingCategories : null,
+            skills: form.skills || null,
+            previous_campaigns: form.previousCampaigns || null,
+            availability: form.availability || null,
+            starting_rate: form.startingRate || null,
+            profile_picture_url: uploadedProfilePhotoUrl || uploadedPhotoUrls[0] || null,
+            instagram_handle: form.instagramHandle,
+            followers_count: form.followersCount,
+            tiktok_youtube: form.tiktokYoutube || null,
+            experience: form.experience || null,
+            image1_url: uploadedPhotoUrls[0] || "",
+            image2_url: uploadedPhotoUrls[1] || null,
+            image3_url: uploadedPhotoUrls[2] || null,
+            image4_url: uploadedPhotoUrls[3] || null,
+            image5_url: uploadedPhotoUrls[4] || null,
+            image6_url: uploadedPhotoUrls[5] || null,
+            video1_url: uploadedVideoUrls[0] || "",
+            video2_url: uploadedVideoUrls[1] || null,
+            video3_url: uploadedVideoUrls[2] || null,
+            is_approved: false,
+          };
+
+          let { data: insertedInf, error: dbErr } = await supabase
             .from("influencer_partner_requests")
-            .insert({
+            .insert(payload)
+            .select("id")
+            .single();
+
+          if (dbErr && dbErr.code === "42703") {
+            // Fallback to base columns if migration not run
+            const basePayload = {
               full_name: form.fullName,
               gender: form.gender,
               city: form.city,
@@ -536,10 +696,16 @@ export default function InfluencerApplyForm({
               video1_url: uploadedVideoUrls[0] || "",
               video2_url: uploadedVideoUrls[1] || null,
               video3_url: uploadedVideoUrls[2] || null,
-              is_approved: true,
-            })
-            .select("id")
-            .single();
+              is_approved: false,
+            };
+            const fallbackDb = await supabase
+              .from("influencer_partner_requests")
+              .insert(basePayload)
+              .select("id")
+              .single();
+            insertedInf = fallbackDb.data;
+            dbErr = fallbackDb.error;
+          }
 
           if (dbErr) {
             throw dbErr;
@@ -591,15 +757,33 @@ export default function InfluencerApplyForm({
       fullName: "",
       gender: "",
       city: "",
+      country: "Pakistan",
       phone: "",
       email: "",
+      age: "",
       height: "",
+      weight: "",
+      chestBust: "",
+      waist: "",
+      hips: "",
+      shoeSize: "",
+      hairColor: "",
+      eyeColor: "",
       skinTone: "",
+      languages: "",
+      skills: "",
+      previousCampaigns: "",
+      availability: "Available for Projects",
+      startingRate: "",
       instagramHandle: "",
       followersCount: "",
       tiktokYoutube: "",
       experience: "",
     });
+    setProfilePhoto(null);
+    setProfilePhotoPreview(null);
+    setProfilePhotoProgress(0);
+    setModelingCategories(["Fashion", "Commercial"]);
     setBrandsWorkedWith([]);
     setBrandTagInput("");
     setPhotos([null, null, null, null, null, null]);
@@ -682,9 +866,92 @@ export default function InfluencerApplyForm({
                   </div>
                 )}
 
-                {/* Personal Information */}
+                {/* Model Profile Headshot Banner */}
+                <div className="card border-0 bg-light rounded-4 p-3 mb-4 shadow-sm">
+                  <div className="d-flex flex-column flex-sm-row align-items-center gap-4">
+                    <div className="position-relative" style={{ width: "115px", height: "115px", minWidth: "115px" }}>
+                      <div
+                        className={`w-100 h-100 rounded-circle overflow-hidden border border-3 shadow-sm bg-white d-flex align-items-center justify-content-center position-relative ${
+                          errors.profilePhoto ? "border-danger" : "border-white"
+                        }`}
+                      >
+                        {profilePhotoPreview ? (
+                          <img
+                            src={profilePhotoPreview}
+                            alt="Model Profile"
+                            className="w-100 h-100"
+                            style={{ objectFit: "cover" }}
+                          />
+                        ) : (
+                          <BsPersonCircle className="text-secondary" style={{ fontSize: "70px" }} />
+                        )}
+
+                        {submitting && profilePhotoProgress > 0 && profilePhotoProgress < 100 && (
+                          <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-75 text-white">
+                            <span className="small fw-bold">{profilePhotoProgress}%</span>
+                          </div>
+                        )}
+                      </div>
+                      <label
+                        className="btn btn-sm rounded-circle position-absolute bottom-0 end-0 p-2 shadow text-white cursor-pointer"
+                        style={{
+                          background: "var(--purple)",
+                          borderColor: "var(--purple)",
+                          transform: "translate(4px, 4px)",
+                          zIndex: 3,
+                        }}
+                        title="Upload Model Profile Picture"
+                      >
+                        <BsCamera className="fs-6" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="d-none"
+                          disabled={submitting}
+                          onChange={(e) =>
+                            handleProfilePhotoChange(e.target.files?.[0] || null)
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    <div className="text-center text-sm-start flex-grow-1">
+                      <div className="d-flex align-items-center justify-content-center justify-content-sm-start gap-2 mb-1">
+                        <h6 className="fw-bold mb-0 text-dark">
+                          Model Profile Picture (Headshot) <span className="text-danger">*</span>
+                        </h6>
+                      </div>
+                      <p className="text-muted small mb-2">
+                        Upload a clear close-up face portrait / headshot. This will be prominently displayed on your model card and talent profile.
+                      </p>
+                      {profilePhoto ? (
+                        <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-1 small">
+                          ✓ {profilePhoto.name} selected
+                        </span>
+                      ) : (
+                        <label className="btn btn-sm btn-outline-dark rounded-pill px-3 py-1 small cursor-pointer">
+                          Choose Headshot
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="d-none"
+                            disabled={submitting}
+                            onChange={(e) =>
+                              handleProfilePhotoChange(e.target.files?.[0] || null)
+                            }
+                          />
+                        </label>
+                      )}
+                      {errors.profilePhoto && (
+                        <div className="text-danger small mt-1 fw-medium">{errors.profilePhoto}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 1: Personal & Contact Information */}
                 <h5 className="fw-bold text-dark mb-3 border-bottom pb-2">
-                  1. Personal Information
+                  1. Personal & Contact Information
                 </h5>
                 <div className="row g-3 mb-4">
                   {/* Full Name */}
@@ -721,14 +988,31 @@ export default function InfluencerApplyForm({
                       <option value="">Select gender...</option>
                       <option value="Female">Female</option>
                       <option value="Male">Male</option>
+                      <option value="Non-binary">Non-binary / Other</option>
                     </select>
                     {errors.gender && (
                       <div className="invalid-feedback">{errors.gender}</div>
                     )}
                   </div>
 
-                  {/* City */}
+                  {/* Date of Birth / Age */}
                   <div className="col-md-4">
+                    <label className="form-label fw-semibold small">
+                      Date of Birth / Age
+                    </label>
+                    <input
+                      type="text"
+                      name="age"
+                      value={form.age}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-control rounded-3 py-2"
+                      placeholder="e.g. 23 years or 2001-08-14"
+                    />
+                  </div>
+
+                  {/* City */}
+                  <div className="col-md-3">
                     <label className="form-label fw-semibold small">
                       City <span className="text-danger">*</span>
                     </label>
@@ -746,8 +1030,24 @@ export default function InfluencerApplyForm({
                     )}
                   </div>
 
+                  {/* Country */}
+                  <div className="col-md-3">
+                    <label className="form-label fw-semibold small">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      name="country"
+                      value={form.country}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-control rounded-3 py-2"
+                      placeholder="Pakistan"
+                    />
+                  </div>
+
                   {/* Phone */}
-                  <div className="col-md-6">
+                  <div className="col-md-3">
                     <label className="form-label fw-semibold small">
                       Phone Number <span className="text-danger">*</span>
                     </label>
@@ -766,7 +1066,7 @@ export default function InfluencerApplyForm({
                   </div>
 
                   {/* Email */}
-                  <div className="col-md-6">
+                  <div className="col-md-3">
                     <label className="form-label fw-semibold small">
                       Email Address <span className="text-danger">*</span>
                     </label>
@@ -785,13 +1085,13 @@ export default function InfluencerApplyForm({
                   </div>
                 </div>
 
-                {/* Attributes & Social */}
-                <h5 className="fw-bold text-dark mb-3 border-bottom pb-2">
-                  2. Physical Stats & Socials
+                {/* Section 2: Model Measurements & Physical Appearance */}
+                <h5 className="fw-bold text-dark mb-3 border-bottom pb-2 d-flex align-items-center gap-2">
+                  <BsRulers className="text-purple" /> 2. Model Measurements & Physical Stats
                 </h5>
                 <div className="row g-3 mb-4">
                   {/* Height */}
-                  <div className="col-md-3">
+                  <div className="col-md-3 col-sm-6">
                     <label className="form-label fw-semibold small">
                       Height <span className="text-danger">*</span>
                     </label>
@@ -809,8 +1109,134 @@ export default function InfluencerApplyForm({
                     )}
                   </div>
 
+                  {/* Weight */}
+                  <div className="col-md-3 col-sm-6">
+                    <label className="form-label fw-semibold small">
+                      Weight
+                    </label>
+                    <input
+                      type="text"
+                      name="weight"
+                      value={form.weight}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-control rounded-3 py-2"
+                      placeholder="e.g. 54 kg / 119 lbs"
+                    />
+                  </div>
+
+                  {/* Chest / Bust */}
+                  <div className="col-md-3 col-sm-6">
+                    <label className="form-label fw-semibold small">
+                      Chest / Bust
+                    </label>
+                    <input
+                      type="text"
+                      name="chestBust"
+                      value={form.chestBust}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-control rounded-3 py-2"
+                      placeholder='e.g. 34B or 34"'
+                    />
+                  </div>
+
+                  {/* Waist */}
+                  <div className="col-md-3 col-sm-6">
+                    <label className="form-label fw-semibold small">
+                      Waist
+                    </label>
+                    <input
+                      type="text"
+                      name="waist"
+                      value={form.waist}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-control rounded-3 py-2"
+                      placeholder='e.g. 26"'
+                    />
+                  </div>
+
+                  {/* Hips */}
+                  <div className="col-md-3 col-sm-6">
+                    <label className="form-label fw-semibold small">
+                      Hips
+                    </label>
+                    <input
+                      type="text"
+                      name="hips"
+                      value={form.hips}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-control rounded-3 py-2"
+                      placeholder='e.g. 36"'
+                    />
+                  </div>
+
+                  {/* Shoe Size */}
+                  <div className="col-md-3 col-sm-6">
+                    <label className="form-label fw-semibold small">
+                      Shoe Size
+                    </label>
+                    <input
+                      type="text"
+                      name="shoeSize"
+                      value={form.shoeSize}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-control rounded-3 py-2"
+                      placeholder="e.g. 38 EU / 7 US"
+                    />
+                  </div>
+
+                  {/* Hair Color */}
+                  <div className="col-md-3 col-sm-6">
+                    <label className="form-label fw-semibold small">
+                      Hair Color
+                    </label>
+                    <select
+                      name="hairColor"
+                      value={form.hairColor}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-select rounded-3 py-2"
+                    >
+                      <option value="">Select hair color...</option>
+                      <option value="Black">Black</option>
+                      <option value="Dark Brown">Dark Brown</option>
+                      <option value="Medium Brown">Medium Brown</option>
+                      <option value="Light Brown">Light Brown</option>
+                      <option value="Blonde">Blonde</option>
+                      <option value="Auburn / Red">Auburn / Red</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  {/* Eye Color */}
+                  <div className="col-md-3 col-sm-6">
+                    <label className="form-label fw-semibold small">
+                      Eye Color
+                    </label>
+                    <select
+                      name="eyeColor"
+                      value={form.eyeColor}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-select rounded-3 py-2"
+                    >
+                      <option value="">Select eye color...</option>
+                      <option value="Dark Brown">Dark Brown</option>
+                      <option value="Brown">Brown</option>
+                      <option value="Hazel">Hazel</option>
+                      <option value="Green">Green</option>
+                      <option value="Blue">Blue</option>
+                      <option value="Grey">Grey</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
                   {/* Skin Tone */}
-                  <div className="col-md-3">
+                  <div className="col-md-3 col-sm-6">
                     <label className="form-label fw-semibold small">
                       Skin Tone <span className="text-danger">*</span>
                     </label>
@@ -832,9 +1258,137 @@ export default function InfluencerApplyForm({
                       <div className="invalid-feedback">{errors.skinTone}</div>
                     )}
                   </div>
+                </div>
 
+                {/* Section 3: Professional Modeling Profile & Categories */}
+                <h5 className="fw-bold text-dark mb-3 border-bottom pb-2 d-flex align-items-center gap-2">
+                  <BsStar className="text-purple" /> 3. Modeling Categories & Professional Profile
+                </h5>
+                <div className="row g-3 mb-4">
+                  {/* Modeling Categories Pills */}
+                  <div className="col-12">
+                    <label className="form-label fw-semibold small d-block mb-1">
+                      Modeling Categories (Click to select all that apply)
+                    </label>
+                    <div className="d-flex flex-wrap gap-2 pt-1">
+                      {AVAILABLE_CATEGORIES.map((cat) => {
+                        const isSelected = modelingCategories.includes(cat);
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => toggleCategory(cat)}
+                            disabled={submitting}
+                            className={`btn btn-sm rounded-pill px-3 py-1 fw-medium transition-all ${
+                              isSelected
+                                ? "btn-primary text-white shadow-sm"
+                                : "btn-outline-secondary"
+                            }`}
+                            style={
+                              isSelected
+                                ? { background: "var(--purple)", borderColor: "var(--purple)" }
+                                : {}
+                            }
+                          >
+                            {isSelected ? `✓ ${cat}` : `+ ${cat}`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Languages */}
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold small">
+                      Languages Spoken
+                    </label>
+                    <input
+                      type="text"
+                      name="languages"
+                      value={form.languages}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-control rounded-3 py-2"
+                      placeholder="e.g. English, Urdu, Punjabi"
+                    />
+                  </div>
+
+                  {/* Skills */}
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold small">
+                      Special Skills
+                    </label>
+                    <input
+                      type="text"
+                      name="skills"
+                      value={form.skills}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-control rounded-3 py-2"
+                      placeholder="e.g. Ramp Walk, Acting, Posing, Dancing"
+                    />
+                  </div>
+
+                  {/* Availability */}
+                  <div className="col-md-2">
+                    <label className="form-label fw-semibold small">
+                      Availability
+                    </label>
+                    <select
+                      name="availability"
+                      value={form.availability}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-select rounded-3 py-2"
+                    >
+                      <option value="Available for Projects">Open for Projects</option>
+                      <option value="Full-Time Available">Full-Time</option>
+                      <option value="Part-Time Available">Part-Time</option>
+                      <option value="Available for Travel">Available for Travel</option>
+                      <option value="Weekends Only">Weekends Only</option>
+                    </select>
+                  </div>
+
+                  {/* Starting Rate */}
+                  <div className="col-md-2">
+                    <label className="form-label fw-semibold small">
+                      Starting Rate / Day
+                    </label>
+                    <input
+                      type="text"
+                      name="startingRate"
+                      value={form.startingRate}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-control rounded-3 py-2"
+                      placeholder="e.g. PKR 30K or Quote"
+                    />
+                  </div>
+
+                  {/* Previous Campaigns */}
+                  <div className="col-12">
+                    <label className="form-label fw-semibold small">
+                      Previous Campaigns / Highlights
+                    </label>
+                    <input
+                      type="text"
+                      name="previousCampaigns"
+                      value={form.previousCampaigns}
+                      onChange={handleInputChange}
+                      disabled={submitting}
+                      className="form-control rounded-3 py-2"
+                      placeholder="e.g. Gul Ahmed Summer 2024, Sapphire Fest, Khaadi Campaign"
+                    />
+                  </div>
+                </div>
+
+                {/* Section 4: Socials & Collaborations */}
+                <h5 className="fw-bold text-dark mb-3 border-bottom pb-2">
+                  4. Social Handles & Brand Collaborations
+                </h5>
+                <div className="row g-3 mb-4">
                   {/* Instagram Handle */}
-                  <div className="col-md-3">
+                  <div className="col-md-4">
                     <label className="form-label fw-semibold small">
                       Instagram Handle <span className="text-danger">*</span>
                     </label>
@@ -849,7 +1403,7 @@ export default function InfluencerApplyForm({
                         onChange={handleInputChange}
                         disabled={submitting}
                         className={`form-control rounded-end-3 py-2 ${errors.instagramHandle ? "is-invalid" : ""}`}
-                        placeholder="handle"
+                        placeholder="username"
                       />
                     </div>
                     {errors.instagramHandle && (
@@ -860,7 +1414,7 @@ export default function InfluencerApplyForm({
                   </div>
 
                   {/* Followers Count */}
-                  <div className="col-md-3">
+                  <div className="col-md-4">
                     <label className="form-label fw-semibold small">
                       Followers Count <span className="text-danger">*</span>
                     </label>
@@ -871,7 +1425,7 @@ export default function InfluencerApplyForm({
                       onChange={handleInputChange}
                       disabled={submitting}
                       className={`form-control rounded-3 py-2 ${errors.followersCount ? "is-invalid" : ""}`}
-                      placeholder="e.g. 45K"
+                      placeholder="e.g. 45K or 120K"
                     />
                     {errors.followersCount && (
                       <div className="invalid-feedback">
@@ -881,7 +1435,7 @@ export default function InfluencerApplyForm({
                   </div>
 
                   {/* TikTok / YouTube */}
-                  <div className="col-md-6">
+                  <div className="col-md-4">
                     <label className="form-label fw-semibold small">
                       TikTok / YouTube Links (Optional)
                     </label>
@@ -892,12 +1446,12 @@ export default function InfluencerApplyForm({
                       onChange={handleInputChange}
                       disabled={submitting}
                       className="form-control rounded-3 py-2"
-                      placeholder="https://tiktok.com/@username or YouTube link"
+                      placeholder="https://tiktok.com/@username"
                     />
                   </div>
 
                   {/* Brands Worked With (Multi-tag input) */}
-                  <div className="col-md-6">
+                  <div className="col-12">
                     <label className="form-label fw-semibold small">
                       Brands Worked With
                     </label>
@@ -914,7 +1468,7 @@ export default function InfluencerApplyForm({
                           }
                         }}
                         className="form-control rounded-3"
-                        placeholder="Type brand name & click Add..."
+                        placeholder="Type brand name (e.g. Sana Safinaz) and click Add..."
                       />
                       <button
                         type="button"
@@ -957,14 +1511,14 @@ export default function InfluencerApplyForm({
                       onChange={handleInputChange}
                       disabled={submitting}
                       className="form-control rounded-3"
-                      placeholder="Briefly describe your modeling/influencer campaigns, commercial shoots, or brand ambassador roles..."
+                      placeholder="Briefly describe your modeling experience, runway shows, editorial features, or brand collaborations..."
                     />
                   </div>
                 </div>
 
-                {/* Photos & Videos Portfolio */}
+                {/* Section 5: Portfolio Media */}
                 <h5 className="fw-bold text-dark mb-3 border-bottom pb-2">
-                  3. Portfolio Media
+                  5. Portfolio Media (Photos & Videos)
                 </h5>
 
                 {/* Photos Uploads (up to 6) */}

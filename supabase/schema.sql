@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.brand_partner_requests (
   category TEXT NOT NULL,
   logo_url TEXT NOT NULL,
   message TEXT,
-  is_approved BOOLEAN DEFAULT TRUE,
+  is_approved BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -32,6 +32,22 @@ CREATE TABLE IF NOT EXISTS public.influencer_partner_requests (
   followers_count TEXT NOT NULL,
   tiktok_youtube TEXT,
   experience TEXT,
+  profile_picture_url TEXT,
+  age TEXT,
+  country TEXT DEFAULT 'Pakistan',
+  weight TEXT,
+  chest_bust TEXT,
+  waist TEXT,
+  hips TEXT,
+  shoe_size TEXT,
+  hair_color TEXT,
+  eye_color TEXT,
+  languages TEXT,
+  modeling_categories TEXT[],
+  skills TEXT,
+  previous_campaigns TEXT,
+  availability TEXT,
+  starting_rate TEXT,
   image1_url TEXT NOT NULL,
   image2_url TEXT,
   image3_url TEXT,
@@ -41,7 +57,8 @@ CREATE TABLE IF NOT EXISTS public.influencer_partner_requests (
   video1_url TEXT NOT NULL,
   video2_url TEXT,
   video3_url TEXT,
-  is_approved BOOLEAN DEFAULT TRUE,
+  is_approved BOOLEAN DEFAULT FALSE,
+  is_verified BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -56,6 +73,7 @@ CREATE TABLE IF NOT EXISTS public.influencer_brands_worked_with (
 -- Indexes for fast query performance
 CREATE INDEX IF NOT EXISTS idx_brand_partner_requests_approved ON public.brand_partner_requests(is_approved);
 CREATE INDEX IF NOT EXISTS idx_influencer_partner_requests_approved ON public.influencer_partner_requests(is_approved);
+CREATE INDEX IF NOT EXISTS idx_influencer_partner_requests_verified ON public.influencer_partner_requests(is_verified);
 CREATE INDEX IF NOT EXISTS idx_influencer_brands_worked_with_influencer_id ON public.influencer_brands_worked_with(influencer_id);
 
 -- Storage Bucket Creation Instructions:

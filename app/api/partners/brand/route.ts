@@ -34,14 +34,14 @@ export async function GET() {
         .order("created_at", { ascending: false });
 
       if (!error && data) {
-        return NextResponse.json({ success: true, data: [...data, ...memoryBrands] });
+        return NextResponse.json({ success: true, data });
       }
     }
 
-    return NextResponse.json({ success: true, data: memoryBrands });
+    return NextResponse.json({ success: true, data: [] });
   } catch (err) {
     console.error("GET brand partners error:", err);
-    return NextResponse.json({ success: true, data: memoryBrands });
+    return NextResponse.json({ success: true, data: [] });
   }
 }
 
@@ -110,23 +110,13 @@ export async function POST(request: Request) {
           category,
           logo_url: logoUrl,
           message: message || null,
-          is_approved: true, // Default to approved so it displays immediately after submission
+          is_approved: false, // Must be approved from Supabase before appearing publicly
         });
 
       if (insertError) {
         console.error("Supabase Brand Request Insert Error:", insertError);
       }
     }
-
-    // Always push to in-memory store so card displays immediately without manual approval
-    const newBrandItem = {
-      id: `brand-${Date.now()}`,
-      brand_name: brandName,
-      contact_person: contactPerson,
-      website: website || null,
-      logo_url: logoUrl,
-    };
-    memoryBrands.unshift(newBrandItem);
 
     // Nodemailer Email Notification
     if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
@@ -185,8 +175,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      data: newBrandItem,
-      message: "Application submitted successfully.",
+      data: { brand_name: brandName, contact_person: contactPerson },
+      message: "Application submitted successfully. It will be reviewed before appearing publicly.",
     });
   } catch (error) {
     console.error("Brand partner submission error:", error);
