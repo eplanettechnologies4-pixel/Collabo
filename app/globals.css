@@ -168,8 +168,8 @@ a{ color: inherit; text-decoration: none; }
   width: auto;
   display: block;
 }
-.brandmark.footer-brandmark img{ height: 70px; }
-.brandmark.header-brandmark img{ height: 70px; width:100px;object-fit: cover; }
+.brandmark.footer-brandmark img{ height: 70px !important; }
+.brandmark.header-brandmark img{ height: 70px !important; width:100px !important;object-fit: cover; }
 .logo-default{
     object-fit: contain !important;
     width: 100px !important;

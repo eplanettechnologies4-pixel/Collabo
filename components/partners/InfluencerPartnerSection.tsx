@@ -87,7 +87,7 @@ export default function InfluencerPartnerSection() {
   }, []);
 
   return (
-    <section className="py-5 my-3 position-relative bg-light rounded-5 px-3 px-md-5">
+    <section className="py-5 my-3 position-relative bg-light md-rounded-5 px-3 px-md-5">
       <div className="container">
         {/* Header */}
         <div className="d-flex flex-column flex-md-row align-items-md-end justify-content-between mb-5 gap-3">
@@ -148,7 +148,7 @@ export default function InfluencerPartnerSection() {
                 "/assets/collabo-logo.png";
 
               return (
-                <div key={inf.id} className="col-12 col-md-6 col-lg-4">
+                <div key={inf.id} className="col-12 col-md-6 col-lg-3">
                   <div
                     className="card h-100 border-0 rounded-4 shadow-sm overflow-hidden d-flex flex-column justify-content-between position-relative"
                     style={{
@@ -216,7 +216,7 @@ export default function InfluencerPartnerSection() {
                     <div className="p-4 d-flex flex-column justify-content-between flex-grow-1">
                       <div>
                         {/* Modeling Categories Chips */}
-                        {inf.modeling_categories && inf.modeling_categories.length > 0 && (
+                        {/* {inf.modeling_categories && inf.modeling_categories.length > 0 && (
                           <div className="d-flex flex-wrap gap-1 mb-3">
                             {inf.modeling_categories.slice(0, 3).map((cat, idx) => (
                               <span
@@ -233,7 +233,7 @@ export default function InfluencerPartnerSection() {
                               </span>
                             )}
                           </div>
-                        )}
+                        )} */}
 
                         {/* Physical Stats Badges */}
                         <div className="d-flex flex-wrap gap-2 mb-3">
@@ -246,22 +246,22 @@ export default function InfluencerPartnerSection() {
                           <span className="badge bg-light text-dark border rounded-pill px-3 py-2">
                             <BsPersonCheck className="me-1 text-purple" /> {inf.skin_tone} Tone
                           </span>
-                          {inf.shoe_size && (
+                          {/* {inf.shoe_size && (
                             <span className="badge bg-light text-dark border rounded-pill px-3 py-2">
                               Shoe: {inf.shoe_size}
                             </span>
-                          )}
+                          )} */}
                         </div>
 
                         {/* Measurements compact strip if available */}
-                        {(inf.chest_bust || inf.waist || inf.hips) && (
+                        {/* {(inf.chest_bust || inf.waist || inf.hips) && (
                           <div className="p-2 mb-3 rounded-3 bg-light border extra-small text-muted d-flex justify-content-around text-center">
                             {inf.chest_bust && <div><strong>Bust:</strong> {inf.chest_bust}</div>}
                             {inf.waist && <div><strong>Waist:</strong> {inf.waist}</div>}
                             {inf.hips && <div><strong>Hips:</strong> {inf.hips}</div>}
                             {inf.weight && <div><strong>Weight:</strong> {inf.weight}</div>}
                           </div>
-                        )}
+                        )} */}
 
                         {/* Starting Rate & Availability Strip */}
                         {(inf.starting_rate || inf.availability) && (
@@ -295,7 +295,7 @@ export default function InfluencerPartnerSection() {
                         )}
 
                         {/* Brands Worked With Chips */}
-                        {inf.brands_worked_with && inf.brands_worked_with.length > 0 && (
+                        {/* {inf.brands_worked_with && inf.brands_worked_with.length > 0 && (
                           <div className="mb-3">
                             <span className="extra-small text-uppercase text-muted fw-bold d-block mb-1">
                               Worked With:
@@ -312,7 +312,7 @@ export default function InfluencerPartnerSection() {
                               ))}
                             </div>
                           </div>
-                        )}
+                        )} */}
                       </div>
 
                       {/* Action Buttons */}
