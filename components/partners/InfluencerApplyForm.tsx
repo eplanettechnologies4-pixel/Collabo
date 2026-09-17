@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
+import { getSupabaseClient } from "@/lib/supabase";
 import {
   BsUpload,
   BsCheckCircleFill,
@@ -162,6 +163,10 @@ export default function InfluencerApplyForm({
 
   // Photo handlers
   const handlePhotoChange = (index: number, file: File | null) => {
+    if (file && file.size > 25 * 1024 * 1024) {
+      alert(`The selected photo "${file.name}" exceeds the 25MB limit. Please choose a smaller image.`);
+      return;
+    }
     const newPhotos = [...photos];
     const newPreviews = [...photoPreviews];
     newPhotos[index] = file;
@@ -180,6 +185,10 @@ export default function InfluencerApplyForm({
 
   // Video handlers
   const handleVideoChange = (index: number, file: File | null) => {
+    if (file && file.size > 50 * 1024 * 1024) {
+      alert(`The selected video "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds the 50MB storage limit. Please select a video under 50MB.`);
+      return;
+    }
     const newVideos = [...videos];
     const newNames = [...videoNames];
     newVideos[index] = file;
@@ -238,19 +247,31 @@ export default function InfluencerApplyForm({
         idx: number,
         onProgress: (pct: number) => void
       ): Promise<string> => {
+        // Enforce 50MB Supabase Storage limit up-front with helpful error
+        const MAX_SIZE = 50 * 1024 * 1024;
+        if (file.size > MAX_SIZE) {
+          throw new Error(
+            `File "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds the 50MB maximum allowed upload size. Please select a smaller or compressed file.`
+          );
+        }
+
         const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const targetPath = `influencers/${prefix}/${Date.now()}_${prefix[0]}${idx + 1}_${sanitizedFileName}`;
 
-        // 1. Direct upload to Supabase Storage bucket (partner-uploads)
+        // Direct upload to Supabase Storage bucket (partner-uploads)
         // This completely bypasses Vercel 4.5MB serverless limits and works consistently on live & local
-        const supabaseUrl =
-          (process.env.NEXT_PUBLIC_SUPABASE_URL ||
-            "https://degpqeykfphdclzxgqkd.supabase.co").replace(/\/$/, "");
+        const supabaseUrl = (
+          process.env.NEXT_PUBLIC_SUPABASE_URL ||
+          "https://degpqeykfphdclzxgqkd.supabase.co"
+        ).replace(/\/$/, "");
         const supabaseAnonKey =
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
           "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlZ3BxZXlrZnBoZGNsenhncWtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NDMyMDcsImV4cCI6MjEwNTExOTIwN30.uOMjxRXRwvpGqG84O38nLzGL3yAS3sWAwHWxc1J4g-U";
 
+        let lastError: any = null;
+
         if (supabaseUrl && supabaseAnonKey) {
+          // 1. Direct upload to Supabase Storage via FormData XMLHttpRequest (with real-time progress events)
           try {
             const url = await new Promise<string>((resolve, reject) => {
               const xhr = new XMLHttpRequest();
@@ -258,8 +279,8 @@ export default function InfluencerApplyForm({
               xhr.open("POST", uploadEndpoint);
               xhr.setRequestHeader("apikey", supabaseAnonKey);
               xhr.setRequestHeader("Authorization", `Bearer ${supabaseAnonKey}`);
-              xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
               xhr.setRequestHeader("x-upsert", "true");
+              // Note: Do not set Content-Type manually; browser automatically sets multipart/form-data with boundary
               xhr.timeout = 10 * 60 * 1000; // 10 minutes for large videos
 
               xhr.upload.onprogress = (event) => {
@@ -288,73 +309,116 @@ export default function InfluencerApplyForm({
               xhr.ontimeout = () =>
                 reject(new Error("Upload timed out. Please check your internet connection."));
 
-              xhr.send(file);
+              const formData = new FormData();
+              formData.append("cacheControl", "3600");
+              formData.append("", file);
+              xhr.send(formData);
             });
 
             return url;
-          } catch (supaErr: any) {
+          } catch (supaXhrErr: any) {
             console.warn(
-              `Supabase direct storage upload failed (${supaErr?.message || "Storage error"}), trying local fallback.`
+              `Supabase direct XHR upload failed (${supaXhrErr?.message || "Storage error"}), trying Supabase SDK.`
             );
+            lastError = supaXhrErr;
+          }
+
+          // 2. Direct upload via Supabase JS SDK client (official SDK fallback)
+          try {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+              onProgress(50);
+              const { data, error } = await supabase.storage
+                .from("partner-uploads")
+                .upload(targetPath, file, {
+                  contentType: file.type || "application/octet-stream",
+                  upsert: true,
+                });
+
+              if (error) {
+                throw error;
+              }
+
+              if (data) {
+                onProgress(100);
+                const { data: pubData } = supabase.storage
+                  .from("partner-uploads")
+                  .getPublicUrl(targetPath);
+                return pubData.publicUrl;
+              }
+            }
+          } catch (sdkErr: any) {
+            console.warn("Supabase JS SDK direct upload failed:", sdkErr);
+            lastError = sdkErr;
           }
         }
 
-        // 2. Fallback to /api/upload/local (for offline development)
-        try {
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("prefix", prefix);
+        // 3. Fallback to /api/upload/local ONLY on localhost development (never on production where Vercel 4.5MB limit causes 413)
+        const isLocalhost =
+          typeof window !== "undefined" &&
+          (window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1" ||
+            window.location.hostname.endsWith(".local"));
 
-          const url = await new Promise<string>((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", "/api/upload/local");
-            xhr.timeout = 5 * 60 * 1000;
+        if (isLocalhost) {
+          try {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("prefix", prefix);
 
-            xhr.upload.onprogress = (event) => {
-              if (event.lengthComputable) {
-                const pct = Math.min(99, Math.round((event.loaded / event.total) * 100));
-                onProgress(pct);
-              }
-            };
+            const url = await new Promise<string>((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.open("POST", "/api/upload/local");
+              xhr.timeout = 5 * 60 * 1000;
 
-            xhr.onload = () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                  const res = JSON.parse(xhr.responseText);
-                  if (res.url) {
-                    onProgress(100);
-                    resolve(res.url);
-                  } else {
-                    reject(new Error(res.error || "No URL returned from upload"));
+              xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                  const pct = Math.min(99, Math.round((event.loaded / event.total) * 100));
+                  onProgress(pct);
+                }
+              };
+
+              xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                  try {
+                    const res = JSON.parse(xhr.responseText);
+                    if (res.url) {
+                      onProgress(100);
+                      resolve(res.url);
+                    } else {
+                      reject(new Error(res.error || "No URL returned from upload"));
+                    }
+                  } catch {
+                    reject(new Error("Invalid server response from upload"));
                   }
-                } catch {
-                  reject(new Error("Invalid server response from upload"));
+                } else {
+                  try {
+                    const res = JSON.parse(xhr.responseText);
+                    reject(new Error(res.error || `Upload failed with status ${xhr.status}`));
+                  } catch {
+                    reject(new Error(`Upload failed with status ${xhr.status}`));
+                  }
                 }
-              } else {
-                try {
-                  const res = JSON.parse(xhr.responseText);
-                  reject(new Error(res.error || `Upload failed with status ${xhr.status}`));
-                } catch {
-                  reject(new Error(`Upload failed with status ${xhr.status}`));
-                }
-              }
-            };
+              };
 
-            xhr.onerror = () =>
-              reject(new Error("Network connection error during file upload."));
-            xhr.ontimeout = () =>
-              reject(new Error("File upload timed out. Please check file size or network."));
-            xhr.send(formData);
-          });
+              xhr.onerror = () =>
+                reject(new Error("Network connection error during file upload."));
+              xhr.ontimeout = () =>
+                reject(new Error("File upload timed out. Please check file size or network."));
+              xhr.send(formData);
+            });
 
-          return url;
-        } catch (fallbackErr: any) {
-          throw new Error(
-            `Failed to upload ${prefix === "photos" ? "Photo" : "Video"} ${idx + 1} (${file.name}): ${
-              fallbackErr?.message || "Upload failed"
-            }`
-          );
+            return url;
+          } catch (localErr: any) {
+            lastError = localErr;
+          }
         }
+
+        throw new Error(
+          `Failed to upload ${prefix === "photos" ? "Photo" : "Video"} ${idx + 1} (${file.name}): ${
+            lastError?.message || "Storage upload failed. Please check network connection."
+          }`
+        );
       };
 
       // 1. Upload photos in parallel
