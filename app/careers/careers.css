@@ -1,0 +1,70 @@
+/* ===== Hero ===== */
+.careers-hero {
+  background: #0d0d10;
+  padding: 90px 20px 100px;
+}
+
+.careers-title {
+  color: #fff;
+  font-weight: 800;
+  font-size: 3.2rem;
+  line-height: 1.15;
+  margin: 20px 0;
+}
+
+.careers-sub {
+  color: #b3b3bd;
+  font-size: 1.1rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ===== Why Collabo ===== */
+.why-title {
+  font-weight: 800;
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+  text-align: center;
+}
+.why-sub {
+    max-width: 100%;
+    margin-bottom: 30px;
+    text-align: center;
+    max-width: 600px;
+    margin: auto;
+}
+
+.value-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f6f6f8;
+  border-radius: 14px;
+  padding: 20px 22px;
+  height: 100%;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.value-icon {
+  font-size: 1.3rem;
+}
+
+/* ===== Open Roles ===== */
+.open-roles-box {
+  background: #f6f6f8;
+  border-radius: 16px;
+  padding: 50px 30px;
+  margin-top: 20px;
+  color: #6b7280;
+}
+
+.open-roles-box a {
+  color: #a855f7;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.open-roles-box a:hover {
+  text-decoration: underline;
+}
