@@ -184,9 +184,9 @@ export default function InfluencerApplyForm({
       case "phone":
         return !value || !value.trim() ? "Phone number is required." : "";
       case "email":
-        if (!value || !value.trim()) return "Email address is required.";
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()))
+        if (value && value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
           return "Invalid email address.";
+        }
         return "";
       case "height":
         return !value || !value.trim() ? 'Height is required (e.g. 5\'7" or 170cm).' : "";
@@ -1068,7 +1068,7 @@ export default function InfluencerApplyForm({
                   {/* Email */}
                   <div className="col-md-3">
                     <label className="form-label fw-semibold small">
-                      Email Address <span className="text-danger">*</span>
+                      Email Address <span className="text-muted fw-normal">(Optional)</span>
                     </label>
                     <input
                       type="email"
@@ -1077,7 +1077,7 @@ export default function InfluencerApplyForm({
                       onChange={handleInputChange}
                       disabled={submitting}
                       className={`form-control rounded-3 py-2 ${errors.email ? "is-invalid" : ""}`}
-                      placeholder="ayesha@example.com"
+                      placeholder="ayesha@example.com (optional)"
                     />
                     {errors.email && (
                       <div className="invalid-feedback">{errors.email}</div>

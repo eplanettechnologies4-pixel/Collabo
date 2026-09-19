@@ -22,6 +22,10 @@ ALTER TABLE public.influencer_partner_requests
   ADD COLUMN IF NOT EXISTS starting_rate TEXT,
   ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
 
+-- Make email optional
+ALTER TABLE public.influencer_partner_requests
+  ALTER COLUMN email DROP NOT NULL;
+
 -- Index on verification status
 CREATE INDEX IF NOT EXISTS idx_influencer_partner_requests_verified
   ON public.influencer_partner_requests(is_verified);

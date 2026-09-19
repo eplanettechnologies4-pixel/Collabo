@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.influencer_partner_requests (
   gender TEXT NOT NULL,
   city TEXT NOT NULL,
   phone TEXT NOT NULL,
-  email TEXT NOT NULL,
+  email TEXT,
   height TEXT NOT NULL,
   skin_tone TEXT NOT NULL,
   instagram_handle TEXT NOT NULL,
