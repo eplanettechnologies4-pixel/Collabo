@@ -184,8 +184,7 @@ export default function InfluencerApplyForm({
       case "phone":
         return !value || !value.trim() ? "Phone number is required." : "";
       case "email":
-        if (!value || !value.trim()) return "Email address is required.";
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()))
+        if (value && value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()))
           return "Invalid email address.";
         return "";
       case "height":
@@ -1066,7 +1065,7 @@ export default function InfluencerApplyForm({
                   {/* Email */}
                   <div className="col-md-3">
                     <label className="form-label fw-semibold small">
-                      Email Address <span className="text-danger">*</span>
+                      Email Address
                     </label>
                     <input
                       type="email"

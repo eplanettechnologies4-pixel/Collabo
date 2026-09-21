@@ -483,7 +483,7 @@ export default function BrandApplyForm({
             )}
             <button
               type="submit"
-              className="btn btn-lg rounded-pill px-5 py-3 text-white fw-bold shadow"
+              className="w-100 btn btn-lg rounded-pill px-5 py-3 text-white fw-bold shadow"
               style={{
                 background: "linear-gradient(135deg, #7b2ff7 0%, #4f2998 100%)",
                 border: "none",

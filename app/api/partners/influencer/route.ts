@@ -351,7 +351,6 @@ export async function POST(request: Request) {
       !gender ||
       !city ||
       !phone ||
-      !email ||
       !height ||
       !skinTone ||
       !instagramHandle ||
@@ -362,8 +361,15 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Please complete all required fields (Full Name, Gender, City, Phone, Email, Height, Skin Tone, Instagram Handle, Followers Count, Photo 1, and Video 1).",
+            "Please complete all required fields (Full Name, Gender, City, Phone, Height, Skin Tone, Instagram Handle, Followers Count, Photo 1, and Video 1).",
         },
+        { status: 400 }
+      );
+    }
+
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json(
+        { error: "Please enter a valid email address." },
         { status: 400 }
       );
     }
@@ -378,7 +384,7 @@ export async function POST(request: Request) {
         city,
         country: country || "Pakistan",
         phone,
-        email,
+        email: email || "",
         age: age || null,
         height,
         weight: weight || null,
@@ -427,7 +433,7 @@ export async function POST(request: Request) {
           gender,
           city,
           phone,
-          email,
+          email: email || "",
           height,
           skin_tone: skinTone,
           instagram_handle: instagramHandle,
@@ -505,7 +511,7 @@ export async function POST(request: Request) {
         const emailPromise = transporter.sendMail({
           from: `"Influencer Applications" <${process.env.GMAIL_USER}>`,
           to: destinationEmail,
-          replyTo: email,
+          replyTo: email || undefined,
           subject: `New Model & Influencer Application: ${fullName}`,
           html: `
             <h2>New Model & Influencer Application</h2>
@@ -515,7 +521,7 @@ export async function POST(request: Request) {
             <p><strong>Gender:</strong> ${escapeHtml(gender)}</p>
             <p><strong>Location:</strong> ${escapeHtml(city)}, ${escapeHtml(country)}</p>
             <p><strong>Phone:</strong> ${escapeHtml(phone)}</p>
-            <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+            <p><strong>Email:</strong> ${email ? escapeHtml(email) : "Not provided"}</p>
             <hr/>
             <h3>Model Physical Stats & Measurements</h3>
             <p><strong>Height:</strong> ${escapeHtml(height)} | <strong>Weight:</strong> ${weight ? escapeHtml(weight) : "N/A"}</p>

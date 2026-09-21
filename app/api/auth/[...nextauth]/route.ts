@@ -3,10 +3,11 @@ import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET || "collabo-nextauth-fallback-secret-key-2026",
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID || "placeholder-google-client-id",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "placeholder-google-client-secret",
       authorization: {
         params: {
           scope:
@@ -17,8 +18,8 @@ export const authOptions: NextAuthOptions = {
       },
     }),
     FacebookProvider({
-      clientId: process.env.FACEBOOK_CLIENT_ID!,
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
+      clientId: process.env.FACEBOOK_CLIENT_ID || "placeholder-facebook-client-id",
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "placeholder-facebook-client-secret",
       authorization: {
         params: {
           scope: "pages_show_list,pages_read_engagement,instagram_basic",
@@ -43,4 +44,11 @@ export const authOptions: NextAuthOptions = {
 };
 
 const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };
+
+export async function GET(req: Request, context: any) {
+  return handler(req, context);
+}
+
+export async function POST(req: Request, context: any) {
+  return handler(req, context);
+}
