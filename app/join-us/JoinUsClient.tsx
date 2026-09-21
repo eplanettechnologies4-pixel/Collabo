@@ -63,7 +63,7 @@ export default function JoinUsClient() {
           <div className="col-12 col-lg-10 col-xl-9">
             {/* Sleek Tab Switcher Bar */}
             <div
-              className="bg-white rounded-pill p-2 shadow-lg mb-4 d-flex justify-content-center gap-2 max-w-xl mx-auto border mt-5"
+              className="custom-tabs bg-white rounded-pill p-2 shadow-lg mb-4 d-flex justify-content-center gap-2 max-w-xl mx-auto border mt-5"
               style={{ maxWidth: "600px" }}
             >
               <button
