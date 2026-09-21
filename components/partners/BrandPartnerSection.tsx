@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { BsBuilding, BsGlobe, BsPlusCircle, BsArrowUpRight } from "react-icons/bs";
-import BrandApplyForm from "./BrandApplyForm";
+import { BsBuilding, BsGlobe, BsArrowUpRight } from "react-icons/bs";
 
 export interface BrandPartner {
   id: string;
@@ -15,21 +14,29 @@ export interface BrandPartner {
 export default function BrandPartnerSection() {
   const [brands, setBrands] = useState<BrandPartner[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchBrands = async () => {
     setLoading(true);
+    let apiBrands: BrandPartner[] = [];
     try {
       const res = await fetch("/api/partners/brand");
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
-        setBrands(json.data);
+        apiBrands = json.data;
       }
     } catch (err) {
       console.error("Error fetching brand partners:", err);
-    } finally {
-      setLoading(false);
     }
+
+    // Clear legacy localStorage custom brands if present
+    try {
+      localStorage.removeItem("collabo_custom_brands");
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+
+    setBrands(apiBrands);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -40,29 +47,14 @@ export default function BrandPartnerSection() {
     <section className="py-5 my-3 position-relative">
       <div className="container">
         {/* Header */}
-        <div className="d-flex flex-column flex-md-row align-items-md-end justify-content-between mb-5 gap-3">
-          <div>
-            <span className="eyebrow text-uppercase fw-bold mb-2" style={{ color: "var(--purple)", letterSpacing: "1px" }}>
-              Collaborating Brands
-            </span>
-            <h2 className="display-5 fw-bold mb-2">Brand Partners</h2>
-            <p className="text-muted mb-0 max-w-xl" style={{ fontSize: "1.1rem" }}>
-              Leading fashion, beauty, food, and lifestyle brands partnering with Pakistan's top creator community.
-            </p>
-          </div>
-          <div>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="btn btn-lg rounded-pill px-4 py-2 text-white fw-semibold d-inline-flex align-items-center gap-2 shadow-sm"
-              style={{
-                background: "linear-gradient(135deg, #7b2ff7 0%, #4f2998 100%)",
-                border: "none",
-              }}
-            >
-              <BsPlusCircle className="fs-5" />
-              Apply as Brand Partner
-            </button>
-          </div>
+        <div className="mb-5">
+          <span className="eyebrow text-uppercase fw-bold mb-2" style={{ color: "var(--purple)", letterSpacing: "1px" }}>
+            Collaborating Brands
+          </span>
+          <h2 className="display-5 fw-bold mb-2">Brand Partners</h2>
+          <p className="text-muted mb-0 max-w-xl" style={{ fontSize: "1.1rem" }}>
+            Leading fashion, beauty, food, and lifestyle brands partnering with Pakistan's top creator community.
+          </p>
         </div>
 
         {/* Content State */}
@@ -79,15 +71,9 @@ export default function BrandPartnerSection() {
               <BsBuilding className="fs-1 text-muted" />
             </div>
             <h4 className="fw-bold">No partners yet</h4>
-            <p className="text-muted max-w-md mx-auto mb-4">
-              Be among the first brands to join our exclusive partner network and connect with creators.
+            <p className="text-muted max-w-md mx-auto mb-0">
+              Our brand directory is currently being updated with verified partners.
             </p>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="btn btn-dark rounded-pill px-4 py-2 fw-medium"
-            >
-              Become a Partner
-            </button>
           </div>
         ) : (
           <div className="row g-4">
@@ -141,15 +127,6 @@ export default function BrandPartnerSection() {
             ))}
           </div>
         )}
-
-        {/* Modal */}
-        <BrandApplyForm
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSuccess={() => {
-            fetchBrands();
-          }}
-        />
       </div>
     </section>
   );

@@ -1747,3 +1747,14 @@ color: white !important;
 
 }
 
+.new-custom-btn:hover{
+  color: black !important;
+}
+
+
+.nav-link:focus, .nav-link:hover {
+    color: white !important;
+}
+button.btn.flex-fill.new-custom-btn.rounded-pill.py-3.fw-bold.transition-all.d-flex.align-items-center.justify-content-center.gap-2.text-white.shadow {
+    color: white !important;
+}

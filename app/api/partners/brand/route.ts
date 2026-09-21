@@ -58,9 +58,9 @@ export async function POST(request: Request) {
     const message = (formData.get("message")?.toString() ?? "").trim();
     const logoFile = formData.get("logo") as File | null;
 
-    if (!brandName || !contactPerson || !email || !phone || !category || !logoFile) {
+    if (!brandName || !contactPerson || !email || !phone || !category) {
       return NextResponse.json(
-        { error: "Please complete all required fields (Brand Name, Contact Person, Email, Phone, Category, and Logo)." },
+        { error: "Please complete all required fields (Brand Name, Contact Person, Email, Phone, and Category)." },
         { status: 400 }
       );
     }
@@ -96,6 +96,11 @@ export async function POST(request: Request) {
         const mimeType = logoFile.type || "image/png";
         logoUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
       }
+    }
+
+    if (!logoUrl) {
+      const initials = brandName.slice(0, 2).toUpperCase() || "BP";
+      logoUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="%237b2ff7"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="white" font-family="sans-serif" font-size="28" font-weight="bold">${initials}</text></svg>`;
     }
 
     if (supabase) {

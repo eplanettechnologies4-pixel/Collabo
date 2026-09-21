@@ -333,18 +333,29 @@ export default function Header() {
             
             <li className="nav-item">
               <Link
-                href="/our-partners"
+                href="/our-brand"
                 className={
-                  pathname === "/our-partners" ? "nav-link active" : "nav-link"
+                  pathname === "/our-brand" ? "nav-link active" : "nav-link"
                 }
               >
-                Our Partners
+                Brand Portfolio
+              </Link>
+            </li>
+
+            <li className="nav-item">
+              <Link
+                href="/our-model"
+                className={
+                  pathname === "/our-model" ? "nav-link active" : "nav-link"
+                }
+              >
+                Model/Influencer Portfolio
               </Link>
             </li>
           </ul>
           <div className="d-flex gap-2 mt-3 mt-lg-0 custom-button">
             <Link
-             href="/apply"
+             href="/join-us"
               className="btn  btn-sm"
               style={{color:"white"}}
             >

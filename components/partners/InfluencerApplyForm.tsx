@@ -199,7 +199,7 @@ export default function InfluencerApplyForm({
       case "photo1":
         return !value ? "First portfolio photo (Photo 1) is required." : "";
       case "video1":
-        return !value ? "First video / reel (Video 1) is required." : "";
+        return "";
       default:
         return "";
     }
@@ -833,12 +833,10 @@ export default function InfluencerApplyForm({
               <div className="text-center py-5">
                 <BsCheckCircleFill className="text-success display-1 mb-3" />
                 <h3 className="fw-bold">
-                  Thanks, we'll review and get back to you.
+                  Application Received!
                 </h3>
-                <p className="text-muted max-w-md mx-auto">
-                  Your portfolio and application details have been submitted
-                  successfully. Our talent directors will get in touch with
-                  approved candidates.
+                <p className="text-muted max-w-md mx-auto fs-5 mt-2">
+                  Thanks — your request has been received and is under review. Once approved, it will appear on our <strong>Model/Influencer Portfolio</strong> page.
                 </p>
                 <button
                   onClick={resetAndClose}
@@ -1635,8 +1633,7 @@ export default function InfluencerApplyForm({
                 <div className="mb-4">
                   <div className="d-flex align-items-center justify-content-between mb-2">
                     <label className="form-label fw-semibold small mb-0">
-                      Portfolio Videos (Up to 3 videos, Video 1 Required{" "}
-                      <span className="text-danger">*</span>)
+                      Portfolio Videos (Up to 3 videos / reels)
                     </label>
                     {errors.video1 && (
                       <span className="text-danger small">{errors.video1}</span>

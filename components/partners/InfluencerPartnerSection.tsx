@@ -3,19 +3,14 @@
 import React, { useEffect, useState } from "react";
 import {
   BsPersonHeart,
-  BsPlusCircle,
   BsPlayCircle,
   BsGeoAlt,
   BsRulers,
   BsPersonCheck,
   BsWhatsapp,
   BsPatchCheckFill,
-  BsCameraFill,
-  BsStarFill,
   BsCalendarCheck,
-  BsTagFill,
 } from "react-icons/bs";
-import InfluencerApplyForm from "./InfluencerApplyForm";
 
 export interface InfluencerPartner {
   id: string;
@@ -61,7 +56,6 @@ const getWhatsAppBookingLink = (fullName: string, city: string, startingRate?: s
 export default function InfluencerPartnerSection() {
   const [influencers, setInfluencers] = useState<InfluencerPartner[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Model Profile Modal state
   const [selectedInfluencer, setSelectedInfluencer] = useState<InfluencerPartner | null>(null);
@@ -69,17 +63,26 @@ export default function InfluencerPartnerSection() {
 
   const fetchInfluencers = async () => {
     setLoading(true);
+    let apiInfluencers: InfluencerPartner[] = [];
     try {
       const res = await fetch("/api/partners/influencer");
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
-        setInfluencers(json.data);
+        apiInfluencers = json.data;
       }
     } catch (err) {
       console.error("Error fetching influencer partners:", err);
-    } finally {
-      setLoading(false);
     }
+
+    // Clear legacy localStorage custom models if present
+    try {
+      localStorage.removeItem("collabo_custom_models");
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+
+    setInfluencers(apiInfluencers);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -90,29 +93,14 @@ export default function InfluencerPartnerSection() {
     <section className="py-5 my-3 position-relative bg-light md-rounded-5 px-3 px-md-5">
       <div className="container">
         {/* Header */}
-        <div className="d-flex flex-column flex-md-row align-items-md-end justify-content-between mb-5 gap-3">
-          <div>
-            <span className="eyebrow text-uppercase fw-bold mb-2" style={{ color: "var(--purple)", letterSpacing: "1px" }}>
-              Creators & Models Directory
-            </span>
-            <h2 className="display-5 fw-bold mb-2">Influencer & Model Partners</h2>
-            <p className="text-muted mb-0 max-w-xl" style={{ fontSize: "1.1rem" }}>
-              Discover featured fashion models, commercial talent, and authentic content creators available for commercial campaigns and brand collaborations.
-            </p>
-          </div>
-          <div>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="btn btn-lg rounded-pill px-4 py-2 text-white fw-semibold d-inline-flex align-items-center gap-2 shadow-sm"
-              style={{
-                background: "linear-gradient(135deg, #7b2ff7 0%, #4f2998 100%)",
-                border: "none",
-              }}
-            >
-              <BsPlusCircle className="fs-5" />
-              Apply as Influencer / Model
-            </button>
-          </div>
+        <div className="mb-5">
+          <span className="eyebrow text-uppercase fw-bold mb-2" style={{ color: "var(--purple)", letterSpacing: "1px" }}>
+            Creators & Models Directory
+          </span>
+          <h2 className="display-5 fw-bold mb-2">Influencer & Model Partners</h2>
+          <p className="text-muted mb-0 max-w-xl" style={{ fontSize: "1.1rem" }}>
+            Discover featured fashion models, commercial talent, and authentic content creators available for commercial campaigns and brand collaborations.
+          </p>
         </div>
 
         {/* Loading / Empty / Content */}
@@ -129,15 +117,9 @@ export default function InfluencerPartnerSection() {
               <BsPersonHeart className="fs-1 text-muted" />
             </div>
             <h4 className="fw-bold">No partners yet</h4>
-            <p className="text-muted max-w-md mx-auto mb-4">
-              Join our talent directory to get featured and land partnerships with top Pakistani & international brands.
+            <p className="text-muted max-w-md mx-auto mb-0">
+              Our talent directory is currently being updated with verified models and creators.
             </p>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="btn btn-dark rounded-pill px-4 py-2 fw-medium"
-            >
-              Submit Application
-            </button>
           </div>
         ) : (
           <div className="row g-4">
@@ -345,15 +327,6 @@ export default function InfluencerPartnerSection() {
             })}
           </div>
         )}
-
-        {/* Apply Modal */}
-        <InfluencerApplyForm
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSuccess={() => {
-            fetchInfluencers();
-          }}
-        />
 
         {/* Rising Studio Model Profile Lightbox Modal */}
         {selectedInfluencer && (
