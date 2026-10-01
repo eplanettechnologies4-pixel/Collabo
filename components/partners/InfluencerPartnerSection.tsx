@@ -68,7 +68,11 @@ export default function InfluencerPartnerSection() {
       const res = await fetch("/api/partners/influencer");
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
-        apiInfluencers = json.data;
+        apiInfluencers = json.data.map((inf: InfluencerPartner) => ({
+          ...inf,
+          images: (inf.images || []).filter((u: string) => u && !u.startsWith("blob:")),
+          videos: (inf.videos || []).filter((u: string) => u && !u.startsWith("blob:")),
+        }));
       }
     } catch (err) {
       console.error("Error fetching influencer partners:", err);
@@ -539,20 +543,11 @@ export default function InfluencerPartnerSection() {
                     <div className="row g-4">
                       {selectedInfluencer.videos.map((videoUrl, idx) => (
                         <div key={idx} className="col-12 col-md-6">
-                          <div className="rounded-4 overflow-hidden shadow-sm border bg-black">
-                            <video
-                              controls
-                              src={videoUrl}
-                              className="w-100"
-                              style={{ maxHeight: "420px" }}
-                            >
-                              <source src={videoUrl} />
-                              Your browser does not support HTML5 video playback.
-                            </video>
-                            <div className="p-2 bg-dark text-white extra-small text-center">
-                              Reel / Video {idx + 1}
-                            </div>
-                          </div>
+                          <ModelVideoPlayer
+                            url={videoUrl}
+                            index={idx}
+                            modelName={selectedInfluencer.full_name}
+                          />
                         </div>
                       ))}
                     </div>
@@ -613,5 +608,149 @@ export default function InfluencerPartnerSection() {
         )}
       </div>
     </section>
+  );
+}
+
+function ModelVideoPlayer({
+  url,
+  index,
+  modelName,
+}: {
+  url: string;
+  index: number;
+  modelName: string;
+}) {
+  const [loadError, setLoadError] = useState(false);
+
+  // Check if YouTube link
+  const youtubeMatch = url.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/
+  );
+  if (youtubeMatch) {
+    const videoId = youtubeMatch[1];
+    return (
+      <div className="rounded-4 overflow-hidden shadow-sm border bg-black">
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0`}
+          title={`${modelName} portfolio video ${index + 1}`}
+          className="w-100"
+          style={{ height: "380px", border: 0 }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+        <div className="p-2 bg-dark text-white extra-small text-center">
+          YouTube Reel / Video {index + 1}
+        </div>
+      </div>
+    );
+  }
+
+  // Check if Instagram link
+  if (url.includes("instagram.com")) {
+    return (
+      <div
+        className="rounded-4 overflow-hidden shadow-sm border bg-dark text-white p-4 text-center d-flex flex-column align-items-center justify-content-center"
+        style={{ minHeight: "340px" }}
+      >
+        <div
+          className="p-3 rounded-circle mb-3 d-inline-flex"
+          style={{
+            background:
+              "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+          }}
+        >
+          <BsPlayCircle className="fs-1 text-white" />
+        </div>
+        <h6 className="fw-bold mb-1">Instagram Video / Reel</h6>
+        <p className="extra-small text-white-50 mb-3">
+          Watch this portfolio reel on Instagram
+        </p>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-outline-light rounded-pill px-4 py-2 small fw-semibold"
+        >
+          Watch on Instagram &rarr;
+        </a>
+        <div className="mt-3 extra-small text-white-50">Reel {index + 1}</div>
+      </div>
+    );
+  }
+
+  // Check if TikTok link
+  if (url.includes("tiktok.com")) {
+    return (
+      <div
+        className="rounded-4 overflow-hidden shadow-sm border bg-black text-white p-4 text-center d-flex flex-column align-items-center justify-content-center"
+        style={{ minHeight: "340px" }}
+      >
+        <BsPlayCircle className="fs-1 text-white mb-2" />
+        <h6 className="fw-bold mb-1">TikTok Video / Reel</h6>
+        <p className="extra-small text-white-50 mb-3">
+          Watch this model video on TikTok
+        </p>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-outline-light rounded-pill px-4 py-2 small fw-semibold"
+        >
+          Watch on TikTok &rarr;
+        </a>
+        <div className="mt-3 extra-small text-white-50">TikTok {index + 1}</div>
+      </div>
+    );
+  }
+
+  // Standard Direct Video file (MP4, WebM, Supabase Storage public URL)
+  return (
+    <div className="rounded-4 overflow-hidden shadow-sm border bg-black position-relative">
+      {loadError ? (
+        <div
+          className="p-4 text-center text-white d-flex flex-column align-items-center justify-content-center"
+          style={{ minHeight: "260px" }}
+        >
+          <BsPlayCircle className="fs-1 text-muted mb-2" />
+          <p className="small mb-2 text-white-50">
+            Unable to stream this video directly in your browser.
+          </p>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-sm btn-outline-light rounded-pill px-3 py-1"
+          >
+            Open Video in New Tab
+          </a>
+        </div>
+      ) : (
+        <video
+          controls
+          playsInline
+          preload="metadata"
+          src={url}
+          className="w-100"
+          style={{ maxHeight: "420px", display: "block" }}
+          onError={() => setLoadError(true)}
+        >
+          <source src={url} type="video/mp4" />
+          <source src={url} type="video/webm" />
+          Your browser does not support HTML5 video playback.
+        </video>
+      )}
+      <div className="p-2 bg-dark text-white extra-small text-center d-flex align-items-center justify-content-between px-3">
+        <span>Reel / Video {index + 1}</span>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-white-50 text-decoration-none"
+          style={{ fontSize: "11px" }}
+        >
+          Direct Link &nearr;
+        </a>
+      </div>
+    </div>
   );
 }

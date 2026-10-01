@@ -173,12 +173,12 @@ export async function GET() {
             inf.image4_url,
             inf.image5_url,
             inf.image6_url,
-          ].filter(Boolean),
+          ].filter((u): u is string => Boolean(u) && !String(u).startsWith("blob:")),
           videos: [
             inf.video1_url,
             inf.video2_url,
             inf.video3_url,
-          ].filter(Boolean),
+          ].filter((u): u is string => Boolean(u) && !String(u).startsWith("blob:")),
         }));
 
         return NextResponse.json({ success: true, data: dbResult });
@@ -276,10 +276,12 @@ export async function POST(request: Request) {
         : [];
 
       for (let i = 0; i < 6; i++) {
-        photoUrls[i] = rawPhotos[i] ? String(rawPhotos[i]).trim() : null;
+        const val = rawPhotos[i] ? String(rawPhotos[i]).trim() : null;
+        photoUrls[i] = val && !val.startsWith("blob:") ? val : null;
       }
       for (let i = 0; i < 3; i++) {
-        videoUrls[i] = rawVideos[i] ? String(rawVideos[i]).trim() : null;
+        const val = rawVideos[i] ? String(rawVideos[i]).trim() : null;
+        videoUrls[i] = val && !val.startsWith("blob:") ? val : null;
       }
     } else {
       // Fallback for multipart form data if needed
@@ -330,16 +332,20 @@ export async function POST(request: Request) {
         const photoVal =
           formData.get(`photoUrl${i}`)?.toString() ||
           formData.get(`imageUrl${i}`)?.toString();
-        if (photoVal) {
+        if (photoVal && !photoVal.startsWith("blob:")) {
           photoUrls[i - 1] = photoVal;
         }
       }
       for (let i = 1; i <= 3; i++) {
         const videoVal = formData.get(`videoUrl${i}`)?.toString();
-        if (videoVal) {
+        if (videoVal && !videoVal.startsWith("blob:")) {
           videoUrls[i - 1] = videoVal;
         }
       }
+    }
+
+    if (profilePictureUrl && profilePictureUrl.startsWith("blob:")) {
+      profilePictureUrl = "";
     }
 
     if (!profilePictureUrl && photoUrls[0]) {
@@ -361,7 +367,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Please complete all required fields (Full Name, Gender, City, Phone, Height, Skin Tone, Instagram Handle, Followers Count, Photo 1, and Video 1).",
+            "Please complete all required fields (Full Name, Gender, City, Phone, Height, Skin Tone, Instagram Handle, Followers Count, Photo 1, and Video 1). Note that videos must be uploaded directly to storage before submission.",
         },
         { status: 400 }
       );

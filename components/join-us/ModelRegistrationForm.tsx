@@ -2,6 +2,7 @@
 
 import React, { useState, ChangeEvent, FormEvent } from "react";
 import Link from "next/link";
+import { uploadMediaWithFallback } from "@/lib/mediaUpload";
 import {
   BsUpload,
   BsCheckCircleFill,
@@ -118,10 +119,16 @@ export default function ModelRegistrationForm() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [videoProgress, setVideoProgress] = useState<number[]>([0, 0, 0]);
+  const [photoProgress, setPhotoProgress] = useState<number[]>([0, 0, 0, 0]);
+  const [profilePicProgress, setProfilePicProgress] = useState<number>(0);
   const [isSuccess, setIsSuccess] = useState(false);
   const [submittedName, setSubmittedName] = useState("");
 
   const toggleCategory = (cat: string) => {
+    if (submitting) return;
     setSelectedCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
     );
@@ -147,6 +154,10 @@ export default function ModelRegistrationForm() {
         return !value ? "Skin tone selection is required." : "";
       case "profilePic":
         return !value ? "Profile picture is required." : "";
+      case "video1":
+        return !portfolioVideos[0] && !portfolioVideoUrls[0]?.trim()
+          ? "At least one portfolio video file or reel link is required."
+          : "";
       default:
         return "";
     }
@@ -163,15 +174,25 @@ export default function ModelRegistrationForm() {
 
   const handleProfilePicChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
+    if (file && file.size > 25 * 1024 * 1024) {
+      alert(`The selected profile picture "${file.name}" exceeds the 25MB limit.`);
+      return;
+    }
+    setProfilePicFile(file);
     if (file) {
-      setProfilePicFile(file);
       setProfilePicPreview(URL.createObjectURL(file));
       setErrors((prev) => ({ ...prev, profilePic: "" }));
+    } else {
+      setProfilePicPreview(null);
     }
   };
 
   const handlePortfolioPhotoChange = (index: number, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
+    if (file && file.size > 25 * 1024 * 1024) {
+      alert(`The selected photo "${file.name}" exceeds the 25MB limit.`);
+      return;
+    }
     const newFiles = [...portfolioFiles];
     const newPreviews = [...portfolioPreviews];
     newFiles[index] = file;
@@ -186,11 +207,20 @@ export default function ModelRegistrationForm() {
 
   const handlePortfolioVideoChange = (index: number, e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
+    if (file && file.size > 50 * 1024 * 1024) {
+      alert(
+        `The selected video "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds the 50MB storage limit. Please select a video under 50MB.`
+      );
+      return;
+    }
     const newFiles = [...portfolioVideos];
     const newPreviews = [...portfolioVideoPreviews];
     newFiles[index] = file;
     if (file) {
       newPreviews[index] = URL.createObjectURL(file);
+      if (index === 0) {
+        setErrors((prev) => ({ ...prev, video1: "" }));
+      }
     } else {
       newPreviews[index] = null;
     }
@@ -202,10 +232,14 @@ export default function ModelRegistrationForm() {
     const newUrls = [...portfolioVideoUrls];
     newUrls[index] = url;
     setPortfolioVideoUrls(newUrls);
+    if (index === 0 && url.trim()) {
+      setErrors((prev) => ({ ...prev, video1: "" }));
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setServerError(null);
 
     const newErrors: Record<string, string> = {
       fullName: validateField("fullName", form.fullName),
@@ -216,6 +250,7 @@ export default function ModelRegistrationForm() {
       height: validateField("height", form.height),
       skinTone: validateField("skinTone", form.skinTone),
       profilePic: validateField("profilePic", profilePicFile || portfolioFiles[0]),
+      video1: validateField("video1", portfolioVideos[0]),
     };
 
     setErrors(newErrors);
@@ -223,62 +258,43 @@ export default function ModelRegistrationForm() {
     if (hasError) return;
 
     setSubmitting(true);
+    setUploadStatus("Uploading media files to cloud storage...");
+    setVideoProgress([0, 0, 0]);
+    setPhotoProgress([0, 0, 0, 0]);
+    setProfilePicProgress(0);
 
     try {
-      // Image compression helper
-      const compressMedia = async (file: File, maxDim = 400): Promise<string> => {
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-              const canvas = document.createElement("canvas");
-              let w = img.width;
-              let h = img.height;
-              if (w > h) {
-                if (w > maxDim) {
-                  h = Math.round((h * maxDim) / w);
-                  w = maxDim;
-                }
-              } else {
-                if (h > maxDim) {
-                  w = Math.round((w * maxDim) / h);
-                  h = maxDim;
-                }
-              }
-              canvas.width = w;
-              canvas.height = h;
-              const ctx = canvas.getContext("2d");
-              if (ctx) {
-                ctx.drawImage(img, 0, 0, w, h);
-                resolve(canvas.toDataURL("image/jpeg", 0.7));
-              } else {
-                resolve((e.target?.result as string) || "");
-              }
-            };
-            img.onerror = () => resolve((e.target?.result as string) || "");
-            img.src = (e.target?.result as string) || "";
-          };
-          reader.onerror = () => resolve("");
-          reader.readAsDataURL(file);
-        });
-      };
-
-      // 1. Process Profile Picture data URL
-      let mainProfilePicUrl = profilePicPreview || "";
+      // 1. Upload Profile Picture to Supabase Storage
+      let mainProfilePicUrl = "";
       if (profilePicFile) {
-        mainProfilePicUrl = await compressMedia(profilePicFile, 400);
+        setUploadStatus("Uploading model profile photo...");
+        mainProfilePicUrl = await uploadMediaWithFallback({
+          file: profilePicFile,
+          prefix: "profiles",
+          idx: 0,
+          onProgress: (pct) => setProfilePicProgress(pct),
+        });
       }
 
-      // Process Portfolio Photos data URLs
+      // 2. Upload Portfolio Photos to Supabase Storage
+      setUploadStatus("Uploading portfolio photos...");
       const portfolioPhotoUrls: string[] = [];
       for (let i = 0; i < portfolioFiles.length; i++) {
         const file = portfolioFiles[i];
         if (file) {
-          const dataUrl = await compressMedia(file, 500);
-          portfolioPhotoUrls.push(dataUrl);
-        } else if (portfolioPreviews[i]) {
-          portfolioPhotoUrls.push(portfolioPreviews[i]!);
+          const photoUrl = await uploadMediaWithFallback({
+            file,
+            prefix: "photos",
+            idx: i,
+            onProgress: (pct) => {
+              setPhotoProgress((prev) => {
+                const next = [...prev];
+                next[i] = pct;
+                return next;
+              });
+            },
+          });
+          portfolioPhotoUrls.push(photoUrl);
         }
       }
 
@@ -287,77 +303,106 @@ export default function ModelRegistrationForm() {
       }
 
       if (!mainProfilePicUrl) {
-        // SVG Avatar Fallback
         const initials = form.fullName.slice(0, 2).toUpperCase() || "MD";
         mainProfilePicUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="360" viewBox="0 0 300 360"><rect width="300" height="360" fill="%231a1a2e"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%237b2ff7" font-family="sans-serif" font-size="64" font-weight="bold">${initials}</text></svg>`;
       }
 
-      // 2. Process 3 Portfolio Videos (File uploads or pasted URLs)
+      // 3. Upload Portfolio Videos to Supabase Storage (permanent public URLs, completely avoids blob URLs)
+      setUploadStatus("Uploading portfolio videos...");
       const compiledVideoUrls: string[] = [];
       for (let i = 0; i < 3; i++) {
         const file = portfolioVideos[i];
         const pastedUrl = portfolioVideoUrls[i]?.trim();
+
         if (file) {
-          const videoDataUrl = portfolioVideoPreviews[i] || (await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve((e.target?.result as string) || "");
-            reader.onerror = () => resolve("");
-            reader.readAsDataURL(file);
-          }));
-          if (videoDataUrl) compiledVideoUrls.push(videoDataUrl);
-        } else if (pastedUrl) {
+          setUploadStatus(`Uploading Video ${i + 1} (${file.name})...`);
+          const uploadedVideoUrl = await uploadMediaWithFallback({
+            file,
+            prefix: "videos",
+            idx: i,
+            onProgress: (pct) => {
+              setVideoProgress((prev) => {
+                const next = [...prev];
+                next[i] = pct;
+                return next;
+              });
+            },
+          });
+          compiledVideoUrls.push(uploadedVideoUrl);
+        } else if (pastedUrl && !pastedUrl.startsWith("blob:")) {
           compiledVideoUrls.push(pastedUrl);
         }
       }
 
-      // 3. Submit to backend API if available
-      try {
-        await fetch("/api/partners/influencer", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fullName: form.fullName,
-            gender: form.gender,
-            city: form.city,
-            country: form.country,
-            phone: form.phone,
-            email: form.email,
-            age: form.age,
-            height: form.height,
-            weight: form.weight,
-            chestBust: form.chestBust,
-            waist: form.waist,
-            hips: form.hips,
-            shoeSize: form.shoeSize,
-            hairColor: form.hairColor,
-            eyeColor: form.eyeColor,
-            skinTone: form.skinTone,
-            languages: form.languages,
-            modelingCategories: selectedCategories,
-            experience: form.experience,
-            profilePictureUrl: mainProfilePicUrl,
-            instagramHandle: form.instagramHandle,
-            followersCount: "10K+",
-            tiktokYoutube: form.tiktokYoutube,
-            photoUrls: portfolioPhotoUrls.length > 0 ? portfolioPhotoUrls : [mainProfilePicUrl],
-            videoUrls: compiledVideoUrls,
-          }),
-        });
-      } catch (err) {
-        console.warn("API submission non-fatal warning:", err);
+      if (compiledVideoUrls.length === 0) {
+        throw new Error(
+          "Please upload at least one video file or provide a valid video URL."
+        );
+      }
+
+      setUploadStatus("Saving model registration details...");
+
+      // 4. Submit to backend API
+      const res = await fetch("/api/partners/influencer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: form.fullName,
+          gender: form.gender,
+          city: form.city,
+          country: form.country,
+          phone: form.phone,
+          email: form.email,
+          age: form.age,
+          height: form.height,
+          weight: form.weight,
+          chestBust: form.chestBust,
+          waist: form.waist,
+          hips: form.hips,
+          shoeSize: form.shoeSize,
+          hairColor: form.hairColor,
+          eyeColor: form.eyeColor,
+          skinTone: form.skinTone,
+          languages: form.languages,
+          modelingCategories: selectedCategories,
+          experience: form.experience,
+          profilePictureUrl: mainProfilePicUrl,
+          instagramHandle:
+            form.instagramHandle ||
+            form.fullName.toLowerCase().replace(/\s+/g, "_"),
+          followersCount: "10K+",
+          tiktokYoutube: form.tiktokYoutube,
+          photoUrls:
+            portfolioPhotoUrls.length > 0
+              ? portfolioPhotoUrls
+              : [mainProfilePicUrl],
+          videoUrls: compiledVideoUrls,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || `Server error (${res.status})`);
       }
 
       setSubmittedName(form.fullName);
       setIsSuccess(true);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error("Model registration submission failed:", err);
+      setServerError(
+        err?.message ||
+          "Failed to upload media or save your registration. Please check your network connection and try again."
+      );
     } finally {
       setSubmitting(false);
+      setUploadStatus(null);
     }
   };
 
   const resetForm = () => {
     setIsSuccess(false);
+    setServerError(null);
+    setUploadStatus(null);
     setForm({
       fullName: "",
       age: "",
@@ -387,6 +432,9 @@ export default function ModelRegistrationForm() {
     setPortfolioVideos([null, null, null]);
     setPortfolioVideoPreviews([null, null, null]);
     setPortfolioVideoUrls(["", "", ""]);
+    setVideoProgress([0, 0, 0]);
+    setPhotoProgress([0, 0, 0, 0]);
+    setProfilePicProgress(0);
     setErrors({});
   };
 
@@ -942,13 +990,74 @@ export default function ModelRegistrationForm() {
                   </div>
 
                   {portfolioVideoPreviews[idx] ? (
-                    <div className="rounded-3 overflow-hidden bg-black mb-2" style={{ maxHeight: "160px" }}>
-                      <video
-                        controls
-                        src={portfolioVideoPreviews[idx]!}
-                        className="w-100 h-100"
-                        style={{ maxHeight: "160px", objectFit: "contain" }}
-                      />
+                    <div>
+                      <div
+                        className="rounded-3 overflow-hidden bg-black mb-2 position-relative shadow-sm"
+                        style={{ height: "200px" }}
+                      >
+                        <video
+                          controls
+                          playsInline
+                          preload="metadata"
+                          src={portfolioVideoPreviews[idx]!}
+                          className="w-100 h-100"
+                          style={{ objectFit: "contain", display: "block" }}
+                        >
+                          <source src={portfolioVideoPreviews[idx]!} />
+                          Your browser does not support HTML5 video preview.
+                        </video>
+                      </div>
+                      <div className="d-flex align-items-center justify-content-between px-1 mb-2">
+                        <span
+                          className="extra-small text-truncate text-muted fw-semibold"
+                          style={{ maxWidth: "80%" }}
+                          title={portfolioVideos[idx]?.name || `Video ${idx + 1}`}
+                        >
+                          🎬 {portfolioVideos[idx]?.name || `Video ${idx + 1}`}{" "}
+                          {portfolioVideos[idx]?.size
+                            ? `(${(portfolioVideos[idx]!.size / (1024 * 1024)).toFixed(1)} MB)`
+                            : ""}
+                        </span>
+                        {!submitting && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger rounded-circle p-1"
+                            title="Remove video"
+                            onClick={() => {
+                              const newFiles = [...portfolioVideos];
+                              const newPreviews = [...portfolioVideoPreviews];
+                              newFiles[idx] = null;
+                              newPreviews[idx] = null;
+                              setPortfolioVideos(newFiles);
+                              setPortfolioVideoPreviews(newPreviews);
+                            }}
+                          >
+                            <BsX size={16} />
+                          </button>
+                        )}
+                      </div>
+                      {submitting && (
+                        <div className="mt-1 mb-2">
+                          <div className="d-flex justify-content-between text-muted extra-small mb-1">
+                            <span className="fw-semibold text-dark">
+                              {videoProgress[idx] >= 100
+                                ? "Upload ready"
+                                : "Uploading video..."}
+                            </span>
+                            <span className="fw-bold">{videoProgress[idx]}%</span>
+                          </div>
+                          <div className="progress" style={{ height: "5px" }}>
+                            <div
+                              className={`progress-bar ${
+                                videoProgress[idx] >= 100
+                                  ? "bg-success"
+                                  : "progress-bar-striped progress-bar-animated bg-primary"
+                              }`}
+                              style={{ width: `${videoProgress[idx]}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="border border-2 border-dashed rounded-3 p-3 text-center position-relative bg-white mb-2">
@@ -959,6 +1068,7 @@ export default function ModelRegistrationForm() {
                       <input
                         type="file"
                         accept="video/*"
+                        disabled={submitting}
                         onChange={(e) => handlePortfolioVideoChange(idx, e)}
                         className="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer"
                       />
@@ -972,16 +1082,43 @@ export default function ModelRegistrationForm() {
                     <input
                       type="url"
                       value={portfolioVideoUrls[idx]}
+                      disabled={submitting}
                       onChange={(e) => handleVideoUrlChange(idx, e.target.value)}
                       className="form-control form-control-sm rounded-3"
-                      placeholder="https://instagram.com/reel/..."
+                      placeholder="https://instagram.com/reel/... or https://..."
                     />
                   </div>
                 </div>
               </div>
             ))}
           </div>
+          {errors.video1 && (
+            <div className="text-danger small mt-2 fw-medium">
+              {errors.video1}
+            </div>
+          )}
         </div>
+
+        {/* Server error banner */}
+        {serverError && (
+          <div className="alert alert-danger rounded-4 p-3 mb-3 d-flex align-items-center justify-content-between shadow-sm">
+            <span className="small fw-medium">{serverError}</span>
+            <button
+              type="button"
+              className="btn-close"
+              aria-label="Close"
+              onClick={() => setServerError(null)}
+            ></button>
+          </div>
+        )}
+
+        {/* Live Upload Status */}
+        {submitting && uploadStatus && (
+          <div className="p-3 mb-3 rounded-4 bg-light border d-flex align-items-center gap-3">
+            <div className="spinner-border spinner-border-sm text-primary" role="status" />
+            <span className="small fw-semibold text-dark">{uploadStatus}</span>
+          </div>
+        )}
 
         {/* Submit button */}
         <div className="d-flex justify-content-end mt-4 pt-3 border-top">
@@ -997,7 +1134,7 @@ export default function ModelRegistrationForm() {
             {submitting ? (
               <>
                 <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
-                Registering Model...
+                {uploadStatus || "Registering Model..."}
               </>
             ) : (
               "Submit Model Registration"

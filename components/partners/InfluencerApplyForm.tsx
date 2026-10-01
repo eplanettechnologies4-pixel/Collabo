@@ -154,6 +154,11 @@ export default function InfluencerApplyForm({
     null,
     null,
   ]);
+  const [videoPreviews, setVideoPreviews] = useState<(string | null)[]>([
+    null,
+    null,
+    null,
+  ]);
   const [videoProgress, setVideoProgress] = useState<number[]>([0, 0, 0]);
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -272,10 +277,17 @@ export default function InfluencerApplyForm({
     }
     const newVideos = [...videos];
     const newNames = [...videoNames];
+    const newPreviews = [...videoPreviews];
     newVideos[index] = file;
     newNames[index] = file ? file.name : null;
+    if (file) {
+      newPreviews[index] = URL.createObjectURL(file);
+    } else {
+      newPreviews[index] = null;
+    }
     setVideos(newVideos);
     setVideoNames(newNames);
+    setVideoPreviews(newPreviews);
 
     if (index === 0) {
       setErrors((prev) => ({ ...prev, video1: validateField("video1", file) }));
@@ -790,6 +802,7 @@ export default function InfluencerApplyForm({
     setPhotoProgress([0, 0, 0, 0, 0, 0]);
     setVideos([null, null, null]);
     setVideoNames([null, null, null]);
+    setVideoPreviews([null, null, null]);
     setVideoProgress([0, 0, 0]);
     onClose();
   };
@@ -1647,11 +1660,34 @@ export default function InfluencerApplyForm({
                             idx === 0 && errors.video1 ? "border-danger" : ""
                           }`}
                         >
-                          {videoNames[idx] ? (
+                          {videoPreviews[idx] ? (
                             <div>
-                              <div className="d-flex align-items-center justify-content-between">
-                                <span className="small text-truncate me-2 fw-medium">
-                                  🎬 {videoNames[idx]}
+                              <div
+                                className="rounded-3 overflow-hidden bg-black mb-2 position-relative shadow-sm"
+                                style={{ height: "200px" }}
+                              >
+                                <video
+                                  controls
+                                  playsInline
+                                  preload="metadata"
+                                  src={videoPreviews[idx]!}
+                                  className="w-100 h-100"
+                                  style={{ objectFit: "contain", display: "block" }}
+                                >
+                                  <source src={videoPreviews[idx]!} />
+                                  Your browser does not support HTML5 video preview.
+                                </video>
+                              </div>
+                              <div className="d-flex align-items-center justify-content-between px-1 mb-2">
+                                <span
+                                  className="small text-truncate me-2 fw-medium text-dark"
+                                  style={{ maxWidth: "80%" }}
+                                  title={videoNames[idx] || `Video ${idx + 1}`}
+                                >
+                                  🎬 {videoNames[idx]}{" "}
+                                  {videos[idx]?.size
+                                    ? `(${(videos[idx]!.size / (1024 * 1024)).toFixed(1)}MB)`
+                                    : ""}
                                 </span>
                                 {!submitting && (
                                   <button
