@@ -1,0 +1,278 @@
+/* ==========================================================================
+   Wrap your component's return in <div className="wyld-eligibility"> ... </div>
+   Every rule below is scoped under .wyld-eligibility so nothing else on
+   your site is affected.
+   ========================================================================== */
+
+.wyld-eligibility {
+  --ink: #0a0a0d;
+  --text-muted: #6b6b76;
+  --text-body: #4a4a55;
+  --border-soft: #ececef;
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-pill: 999px;
+
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text-body);
+}
+
+.wyld-eligibility .container {
+  max-width: 900px;
+}
+
+/* ==========================================================================
+   HERO — left exactly as-is, tokens only (do not restyle structure)
+   ========================================================================== */
+
+
+.wyld-eligibility .fs-lead {
+  font-size: 1.15rem;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   Shared section rhythm
+   ========================================================================== */
+.wyld-eligibility .section {
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+.wyld-eligibility .section-heading {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto 3rem;
+}
+
+.wyld-eligibility .section-heading h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #14141a;
+  margin-bottom: 0.75rem;
+}
+
+.wyld-eligibility .section-heading p {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  margin-bottom: 0;
+}
+
+.wyld-eligibility .theme-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background:radial-gradient(circle at -70% 78%, #fdf497 0% 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 0.9rem 2.25rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.wyld-eligibility .theme-btn:hover {
+  transform: translateY(-2px);
+  color: #fff;
+}
+
+/* ==========================================================================
+   Eligibility Checklist section
+   ========================================================================== */
+.wyld-eligibility .eligibility-section {
+  background: #ffffff;
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+.wyld-eligibility .checklist {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.wyld-eligibility .check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.wyld-eligibility .check-item:first-child {
+  padding-top: 0;
+}
+
+.wyld-eligibility .check-item:last-child {
+  border-bottom: none;
+}
+
+.wyld-eligibility .check-icon {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background:black;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.wyld-eligibility .check-item h5 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: #14141a;
+  margin-bottom: 0.2rem;
+  font-family: 'Exo';
+}
+
+.wyld-eligibility .check-item p {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  margin-bottom: 0;
+}
+
+.wyld-eligibility .eligibility-note {
+    background: transparent;
+    border: 1px solid lightgrey;
+    border-radius: var(--radius-lg);
+    max-width: 640px;
+    margin: 2.5rem auto 0;
+    padding: 1.5rem 1.75rem;
+}
+
+
+
+
+/* ==========================================================================
+   3 Ways to Join section
+   ========================================================================== */
+.wyld-eligibility .join-section {
+  background: #f5f5f7;
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+  text-align: center;
+}
+
+.wyld-eligibility .join-section h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #14141a;
+}
+
+.wyld-eligibility .join-card {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  padding: 2rem 1.75rem;
+  height: 100%;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.wyld-eligibility .join-card span {
+  display: block;
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #e3e3e8;
+  margin-bottom: 0.75rem;
+  line-height: 1;
+}
+
+.wyld-eligibility .join-card h5 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #14141a;
+  margin-bottom: 0.6rem;
+  font-family: 'Exo';
+}
+
+.wyld-eligibility .join-card p {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  margin-bottom: 0;
+  line-height: 1.55;
+}
+
+.wyld-eligibility .join-section > .container > p.mt-3 {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   FAQ section
+   ========================================================================== */
+.wyld-eligibility .faq-section {
+  background: #ffffff;
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+.wyld-eligibility .faq-section .section-heading {
+  margin-bottom: 2rem;
+}
+
+.wyld-eligibility .faq-section .accordion-item {
+  border: none;
+  border-bottom: 1px solid var(--border-soft);
+  background: transparent;
+}
+
+.wyld-eligibility .faq-section .accordion-item:first-of-type,
+.wyld-eligibility .faq-section .accordion-item:last-of-type {
+  border-radius: 0;
+}
+
+.wyld-eligibility .faq-section .accordion-button {
+  background: transparent;
+  color: #14141a;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 1.25rem 0;
+  box-shadow: none;
+}
+
+.wyld-eligibility .faq-section .accordion-button:not(.collapsed) {
+  background: transparent;
+  color: var(--pink);
+  box-shadow: none;
+}
+
+.wyld-eligibility .faq-section .accordion-button::after {
+  filter: hue-rotate(300deg) saturate(3);
+}
+
+.wyld-eligibility .faq-section .accordion-button:focus {
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.wyld-eligibility .faq-section .accordion-body {
+  padding: 0 0 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+@media (max-width: 767.98px) {
+  .wyld-eligibility .section-heading h2,
+  .wyld-eligibility .join-section h2 {
+    font-size: 1.5rem;
+  }
+
+  .wyld-eligibility .eligibility-section,
+  .wyld-eligibility .join-section,
+  .wyld-eligibility .faq-section {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .wyld-eligibility .eligibility-note {
+    padding: 1.25rem;
+  }
+}
